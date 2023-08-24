@@ -1,0 +1,135 @@
+plugins {
+  id 'com.android.application'
+  id 'org.jetbrains.kotlin.android'
+}
+
+android {
+  namespace 'cc.abase.lsposed'
+  compileSdk 33
+
+  defaultConfig {
+    applicationId "cc.abase.lsposed"
+    minSdk 23
+    targetSdk 33
+    versionCode 1
+    versionName "1.0.0"
+  }
+
+  //配置不同版本的keystore
+  signingConfigs {
+    debug {
+      storeFile file("../com_ab.jks")
+      storePassword "com_cc"
+      keyAlias "com_cc"
+      keyPassword "com_cc"
+      v1SigningEnabled true
+      v2SigningEnabled true
+    }
+    release {
+      storeFile file("../com_ab.jks")
+      storePassword "com_cc"
+      keyAlias "com_cc"
+      keyPassword "com_cc"
+      v1SigningEnabled true
+      v2SigningEnabled true
+    }
+  }
+
+  //正式和测试配置
+  buildTypes {
+    debug {
+      debuggable true
+      zipAlignEnabled false
+      shrinkResources false
+      minifyEnabled false
+      signingConfig signingConfigs.debug
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    }
+    release {
+      debuggable false
+      zipAlignEnabled true
+      shrinkResources false
+      minifyEnabled false
+      signingConfig signingConfigs.release
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    }
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+  kotlinOptions {
+    jvmTarget = '1.8'
+  }
+  packagingOptions {
+    resources {
+      excludes += '/META-INF/{AL2.0,LGPL2.1}'
+    }
+  }
+
+  //防止没有Temp
+  File tempFile = new File("${getProjectDir().getParentFile().getPath()}/APK/Temp")
+  if (!tempFile.exists()) tempFile.mkdirs()
+}
+
+dependencies {
+  compileOnly fileTree(dir: "libs", include: ["*.jar"])
+  //使用jar(compileOnly fileTree)替代下面的引用
+  //implementation 'de.robv.android.xposed:api:82'
+  //implementation 'de.robv.android.xposed:api:82:sources'
+  //数据解析 https://github.com/google/gson
+  implementation "com.google.code.gson:gson:2.10.1"
+}
+
+//打包处理
+android.applicationVariants.all { variant ->
+  variant.outputs.all { output ->
+    //正式版还是测试版
+    String typeName = buildType.name
+    typeName = typeName.substring(0, 1).toUpperCase() + typeName.substring(1).toLowerCase()
+    //版本号
+    String versionName = getVersionName()
+    //应用名称
+    String appName = "测试Hook"
+    //打包APK完成后的重命名和拷贝
+    assemble.doLast {
+      //编译完成的时间
+      String buildEndTime = "${new Date().format("yyyyMMdd_HHmm")}"
+      String apkFileName = "${appName}__${typeName}_${versionName}_${buildEndTime}.apk"
+      println "assemble编译结束=$apkFileName"
+      //把正式版拷贝到项目APK目录
+      if (typeName == "Release") {
+        //创建APK目录(APK+渠道名称)
+        File apkDir = new File("${getProjectDir().getParentFile().getPath()}/APK/${typeName}")
+        if (!apkDir.exists()) apkDir.mkdirs()
+        project.copy {
+          from("${output.outputFile}")
+          into("${apkDir.path}")
+          rename("${output.outputFile.name}", "${apkFileName}")
+        }
+      } else {
+        //默认运行生成的apk
+        File apkDirDebug = new File("${getProjectDir().getParentFile().getPath()}/APK/Debug")
+        if (apkDirDebug.exists()) apkDirDebug.deleteDir()
+        apkDirDebug.mkdirs()
+        project.copy {
+          from("${output.outputFile}")
+          into("${apkDirDebug.path}")
+          rename("${output.outputFile.name}", "${apkFileName}")
+        }
+      }
+      //开启线程，在打包完成后20秒杀掉JDK，防止下次运行出现被占用的情况
+      new Thread() {
+        @Override
+        void run() {
+          sleep(20 * 1000)
+          File tempFile = new File("${getProjectDir().getParentFile().getPath()}/APK/Temp")
+          if (tempFile.exists() && tempFile.isDirectory()) tempFile.deleteDir()
+          String cmd = "taskkill /f /t /im java.exe"
+          cmd.execute().text.trim()
+        }
+      }.start()
+    }
+  }
+}
