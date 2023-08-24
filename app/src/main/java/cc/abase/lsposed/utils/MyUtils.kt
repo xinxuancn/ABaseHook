@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.content.Context
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
+import de.robv.android.xposed.XposedBridge
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
@@ -107,8 +108,13 @@ object MyUtils {
   }
 
   //去除转义
-  fun unescapeJson(json: String): String {
-    val parseString = JsonParser.parseString(json)
-    return if (parseString.isJsonPrimitive) parseString.asJsonPrimitive.asString else json
+  fun unescapeJson(tag: String, json: String): String {
+    //XposedBridge.log("$tag 转义前数据:$json")
+    return if (json.startsWith("{") || json.startsWith("[")) {
+      val parseString = JsonParser.parseString(json)
+      if (parseString.isJsonPrimitive) parseString.asJsonPrimitive.asString else json
+    } else {
+      json
+    }
   }
 }

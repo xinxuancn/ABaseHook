@@ -78,7 +78,7 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
               val obBuffer = classBuffer.newInstance()//先把数据写入Buffer，再从先把数据写入Buffer读取
               XposedHelpers.callMethod(bo, "writeTo", obBuffer)//写入：RequestBody.writeTo(okio.Buffer())
               val temp = XposedHelpers.callMethod(obBuffer, "readString", Charsets.UTF_8)//读取：okio.Buffer.readString(Charsets.UTF_8)
-              val bodyStr = MyUtils.unescapeJson(temp?.toString() ?: "")
+              val bodyStr = MyUtils.unescapeJson("请求参数", temp?.toString() ?: "")
               requestParams = MyUtils.jsonFormat(bodyStr)
               sb.append("\n\n请求体:\n")
                 .append(requestParams)
@@ -125,7 +125,7 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
               val obBuffer = classBuffer.newInstance()//先把数据写入Buffer，再从先把数据写入Buffer读取
               XposedHelpers.callMethod(bo, "writeTo", obBuffer)//写入：RequestBody.writeTo(okio.Buffer())
               val temp = XposedHelpers.callMethod(obBuffer, "readString", Charsets.UTF_8)//读取：okio.Buffer.readString(Charsets.UTF_8)
-              val bodyStr = MyUtils.unescapeJson(temp?.toString() ?: "")
+              val bodyStr = MyUtils.unescapeJson("请求参数", temp?.toString() ?: "")
               requestParams = MyUtils.jsonFormat(bodyStr)
             }
           }
@@ -164,7 +164,7 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
                 val newBuffer = XposedHelpers.callMethod(buffer, "clone") //Buffer.clone()
                 val result = XposedHelpers.callMethod(newBuffer, "readString", Charsets.UTF_8) //Buffer.readString(Charsets.UTF_8)
                 if (result != null) {
-                  val bodyStr = MyUtils.unescapeJson(result.toString())
+                  val bodyStr = MyUtils.unescapeJson("响应参数", result.toString())
                   val info = if (isGzip) MyUtils.decompressGzipString(bodyStr) else bodyStr
                   sb.append("\n\n响应体:\n").append(MyUtils.jsonFormat(info))
                 } else {
