@@ -6,31 +6,6 @@
 -dontskipnonpubliclibraryclassmembers
 # 指定混淆是采用的算法
 -optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
-#
-# ----------------------------- 第三方库、框架、SDK -----------------------------
-## Gson
-#-keep class com.google.gson.stream.** { *; }
-#-keepattributes EnclosingMethod
-#-dontwarn com.google.gson.**
-#-keep class com.google.gson.**{*;}
-#-keep interface com.google.gson.**{*;}
-##gson
-##如果用到Gson解析包的，直接添加下面这几行就能成功混淆，不然会报错。
-###---------------Begin: proguard configuration for Gson  ----------
-## Gson uses generic type information stored in a class file when working with fields. Proguard
-## removes such information by default, so configure it to keep all of it.
-#-keepattributes Signature
-## For using GSON @Expose annotation
-#-keepattributes *Annotation*
-## Gson specific classes
-#-dontwarn sun.misc.**
-##-keep class com.google.gson.stream.** { *; }
-## Prevent proguard from stripping interface information from TypeAdapterFactory,
-## JsonSerializer, JsonDeserializer instances (so they can be used in @JsonAdapter)
-#-keep class * implements com.google.gson.TypeAdapterFactory
-#-keep class * implements com.google.gson.JsonSerializer
-#-keep class * implements com.google.gson.JsonDeserializer
-# Application classes that will be serialized/deserialized over Gso
 #############################################
 #            项目中特殊处理部分               #
 -keep class * implements de.robv.android.xposed.IXposedHookLoadPackage
