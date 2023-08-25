@@ -4,7 +4,6 @@ import android.app.ActivityManager
 import android.content.Context
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
-import de.robv.android.xposed.XposedBridge
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
@@ -12,6 +11,9 @@ import java.util.zip.GZIPInputStream
 
 
 /**
+ * 丧心病狂的Android混淆文件
+ * https://github.com/WrBug/FrenziedProguard
+ * https://github.com/o2e/ProguardDictionaryGenerator
  * Author:Khaos
  * Date:2023/8/24
  * Time:17:18
