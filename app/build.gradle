@@ -74,11 +74,13 @@ android {
 }
 
 dependencies {
+  //仅作为查看代码使用  https://github.com/square/okhttp
+  compileOnly Deps.okhttp
   compileOnly fileTree(dir: "libs", include: ["*.jar"])
   //使用jar(compileOnly fileTree)替代下面的引用
   //implementation 'de.robv.android.xposed:api:82'
   //implementation 'de.robv.android.xposed:api:82:sources'
-  //数据解析 https://github.com/google/gson
+  //Gson数据处理和打印等 https://github.com/google/gson
   implementation "com.google.code.gson:gson:2.10.1"
 }
 
