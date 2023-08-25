@@ -4,10 +4,7 @@ import android.app.ActivityManager
 import android.content.Context
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
-import java.util.zip.GZIPInputStream
 
 
 /**
@@ -58,20 +55,7 @@ object MyUtils {
 
   //GZIP解压缩
   fun decompressGzipString(gzipString: String): String {
-    val compressedData = gzipString.toByteArray()
-    val inputStream = ByteArrayInputStream(compressedData)
-    val gzipInputStream = GZIPInputStream(inputStream)
-    val outputStream = ByteArrayOutputStream()
-
-    val buffer = ByteArray(1024)
-    var bytesRead = gzipInputStream.read(buffer)
-    while (bytesRead != -1) {
-      outputStream.write(buffer, 0, bytesRead)
-      bytesRead = gzipInputStream.read(buffer)
-    }
-    gzipInputStream.close()
-    outputStream.close()
-    return outputStream.toString()
+    return gzipString.toByteArray().ungzip()
   }
 
   //Json数据格式化显示
