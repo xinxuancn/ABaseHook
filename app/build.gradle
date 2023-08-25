@@ -39,19 +39,19 @@ android {
   buildTypes {
     debug {
       debuggable true
-      zipAlignEnabled false
-      shrinkResources false
-      minifyEnabled false
+      minifyEnabled false   //不开启混淆
+      zipAlignEnabled false  //不优化压缩
+      shrinkResources false  //不移除无用资源
       signingConfig signingConfigs.debug
-      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), '../proguard/my-proguard-rules.pro'
     }
     release {
       debuggable false
-      zipAlignEnabled true
-      shrinkResources false
-      minifyEnabled false
+      minifyEnabled true   //开启混淆
+      zipAlignEnabled true  //压缩优化
+      shrinkResources true  //移除无用资源
       signingConfig signingConfigs.release
-      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), '../proguard/my-proguard-rules.pro'
     }
   }
 
