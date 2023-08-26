@@ -10,6 +10,6 @@ fun String.gzip(): ByteArray {
   }.toByteArray()
 }
 
-fun ByteArray.ungzip(): String {
+fun ByteArray.ungzip(): String {//TODO XX
   return GZIPInputStream(this.inputStream()).bufferedReader().use { it.readText() }
 }
