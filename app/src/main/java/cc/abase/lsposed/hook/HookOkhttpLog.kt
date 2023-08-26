@@ -20,8 +20,7 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
   init {
     //Hook对象Application，Hook方法Hook对象Application.attach(Context)
     XposedHelpers.findAndHookMethod(Application::class.java, "attach", Context::class.java, object : XC_MethodHook() {
-      override fun afterHookedMethod(param: MethodHookParam?) {
-        if (param == null) return
+      override fun afterHookedMethod(param: MethodHookParam) {
         val context = param.thisObject as Context
         val pa = MyUtils.currentProcessPackage(context)
         if (pa != "cc.abase.lsposed" && !pa.contains(":")) hookLog(context, pa)//防止有推送等进程，比如-->com.abase.s1:pushcore
@@ -32,11 +31,11 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
 
   //<editor-fold defaultstate="collapsed" desc="Hook打印请求日志">
   private fun hookLog(context: Context, pa: String) {
-    XposedBridge.log("Hook 进程包名:$pa")
+    XposedBridge.log("Hook OkHttp进程包名:$pa")
     //------------------------------------判断是否使用了OkHttp------------------------------------//
     val clsOkHttp = XposedHelpers.findClassIfExists("okhttp3.OkHttpClient", lpparam.classLoader)
     if (clsOkHttp == null) {
-      XposedBridge.log("Hook失败，没有使用Okhttp或者被混淆了")
+      XposedBridge.log("Hook OkHttp失败，没有使用Okhttp或者被混淆了")
       return
     }
     //------------------------------------读取OkHttp使用的版本------------------------------------//
@@ -51,86 +50,88 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
     } else {
       XposedBridge.log("Hook OkHttp版本号获取失败")
     }
+    //------------------------------------初始化自己需添加的拦截器------------------------------------//
+    val clsCacheInterceptor = XposedHelpers.findClassIfExists("okhttp3.internal.cache.CacheInterceptor", lpparam.classLoader)//okhttp3.internal.cache.CacheInterceptor
+    val clsCacheOld = XposedHelpers.findClassIfExists("okhttp3.internal.cache.InternalCache", lpparam.classLoader)
+    val clsCacheNew = XposedHelpers.findClassIfExists("okhttp3.Cache", lpparam.classLoader)
+    var logInterceptor: Any? = null//日志拦截器
+    if (clsCacheOld != null) {//构建旧版本的okhttp3.internal.cache.CacheInterceptor
+      logInterceptor = XposedHelpers.newInstance(clsCacheInterceptor, mutableListOf(clsCacheOld).toTypedArray(), null)
+    } else if (clsCacheNew != null) {//构建新版本的okhttp3.internal.cache.CacheInterceptor
+      logInterceptor = XposedHelpers.newInstance(clsCacheInterceptor, mutableListOf(clsCacheNew).toTypedArray(), null)
+    }
+    if (logInterceptor == null) {
+      XposedBridge.log("Hook OkHttp创建Log拦截器失败")
+      return
+    }
+    val clsChain = XposedHelpers.findClass("okhttp3.Interceptor.Chain", lpparam.classLoader)//参数类型
+    //Hook日志拦截器
+    XposedHelpers.findAndHookMethod(logInterceptor.javaClass, "intercept", clsChain, object : XC_MethodHook() {
+      override fun beforeHookedMethod(param: MethodHookParam) {
+        super.beforeHookedMethod(param)
+        printRequestInfo(param)//处理之前打印
+      }
+
+      override fun afterHookedMethod(param: MethodHookParam) {
+        super.afterHookedMethod(param)
+        printResponseInfo(param)
+      }
+    })
     //------------------------------------监听OkHttp构造------------------------------------//
     val clsOkClientBuilder = XposedHelpers.findClass("okhttp3.OkHttpClient\$Builder", lpparam.classLoader)
-    var mCountOkHttp = 0//有多少个Okhttp
-
+    //OkHttpClient.newBuilder,需要把之前的拦截器移除
+    XposedHelpers.findAndHookMethod(clsOkHttp, "newBuilder", object : XC_MethodHook() {
+      override fun afterHookedMethod(param: MethodHookParam) {
+        super.afterHookedMethod(param)
+        XposedBridge.log("Hook OkHttpClient.newBuilder准备处理拦截器")
+        val okHttpClientBuilder = param.result//OkHttpClient.Builder
+        val interceptors = XposedHelpers.callMethod(okHttpClientBuilder, "interceptors") as MutableList<Any>//OkHttpClient.interceptors
+        for (any in interceptors) {
+          if (clsCacheInterceptor != null && any.javaClass == clsCacheInterceptor) {//如果是自己添加的拦截器类型
+            val cache = XposedHelpers.getObjectField(any, "cache")//判断cache对象是否为空，如果为空则表示是我们自己设置的，毕竟真实项目中不太可能设置空cache
+            if (cache == null) {
+              interceptors.remove(any)//OkHttpClient.newBuilder移除之前添加的拦截器，防止重复拦截器太多
+              break
+            }
+          }
+        }
+      }
+    })
+    //监听OkHttp构造
     XposedHelpers.findAndHookConstructor(clsOkHttp, clsOkClientBuilder, object : XC_MethodHook() {
-      override fun beforeHookedMethod(param: MethodHookParam?) {
+      override fun beforeHookedMethod(param: MethodHookParam) {
         super.beforeHookedMethod(param)
-        if (param == null) return
-        //------------------------------------如果已经添加过我们的拦截器，则不再处理------------------------------------//
         val okHttpClientBuilder = param.args.first()//OkHttpClient.Builder
-        val clsCacheInterceptor = XposedHelpers.findClassIfExists("okhttp3.internal.cache.CacheInterceptor", lpparam.classLoader)//okhttp3.internal.cache.CacheInterceptor
         val interceptors = XposedHelpers.callMethod(okHttpClientBuilder, "interceptors") as MutableList<Any>//OkHttpClient.Builder.interceptors()
-        val firstDefaultInterceptor = interceptors.firstOrNull()//读取第一个拦截器
-        if (firstDefaultInterceptor != null && firstDefaultInterceptor.javaClass == clsCacheInterceptor) {//如果是自己添加的拦截器类型
-          val cache = XposedHelpers.getObjectField(firstDefaultInterceptor, "cache")//判断cache对象是否为空，如果为空则表示是我们自己设置的，毕竟真实项目中不太可能设置空cache
-          if (cache == null) {
-            XposedBridge.log("Hook Okhttp拦截器是自己添加过的，疑似执行了OkHttpClient.newBuilder(),所以不再添加新的拦截器")
-            return
+        //正常来说，这里面的判断不会return
+        for (any in interceptors) {
+          if (clsCacheInterceptor != null && any.javaClass == clsCacheInterceptor) {//如果是自己添加的拦截器类型
+            val cache = XposedHelpers.getObjectField(any, "cache")//判断cache对象是否为空，如果为空则表示是我们自己设置的，毕竟真实项目中不太可能设置空cache
+            if (cache == null) {
+              XposedBridge.log("Hook OkHttp拦截器处理出现问题，按道理构造的时候没有自定义的拦截器才对 ")
+              return
+            }
           }
         }
-        //------------------------------------OkHttpClient计数------------------------------------//
-        mCountOkHttp++
-        val currentIndexOkHttp = mCountOkHttp//当前是第几个OkHttp
-        //------------------------------------初始化自己需添加的拦截器------------------------------------//
-        val clsCacheOld = XposedHelpers.findClassIfExists("okhttp3.internal.cache.InternalCache", lpparam.classLoader)
-        val clsCacheNew = XposedHelpers.findClassIfExists("okhttp3.Cache", lpparam.classLoader)
-        var responseInterceptor: Any? = null//第一个拦截器
-        var requestInterceptor: Any? = null//最后一个拦截器
-        if (clsCacheOld != null) {//构建旧版本的okhttp3.internal.cache.CacheInterceptor
-          responseInterceptor = XposedHelpers.newInstance(clsCacheInterceptor, mutableListOf(clsCacheOld).toTypedArray(), null)
-          requestInterceptor = XposedHelpers.newInstance(clsCacheInterceptor, mutableListOf(clsCacheOld).toTypedArray(), null)
-        } else if (clsCacheNew != null) {//构建新版本的okhttp3.internal.cache.CacheInterceptor
-          responseInterceptor = XposedHelpers.newInstance(clsCacheInterceptor, mutableListOf(clsCacheNew).toTypedArray(), null)
-          requestInterceptor = XposedHelpers.newInstance(clsCacheInterceptor, mutableListOf(clsCacheNew).toTypedArray(), null)
-        }
-        if (responseInterceptor == null || requestInterceptor == null) {
-          XposedBridge.log("Hook Okhttp疑似不存在okhttp3.internal.cache.CacheInterceptor")
-          return
-        }
-        //------------------------------------监听拦截器------------------------------------////addInterceptor->Request：先添加先执行；Response：先添加后执行
-        if (interceptors.isEmpty()) {
-          interceptors.add(responseInterceptor)//添加到第一个，方便最后解析数据
-          interceptors.add(requestInterceptor)//添加到倒数第二个，方便在加密前打印
-        } else {
-          interceptors.add(0, responseInterceptor)//添加到第一个，方便最后解析数据
-          interceptors.add(interceptors.size - 1, requestInterceptor)//添加到倒数第二个，方便在加密前打印
-        }
-        val clsChain = XposedHelpers.findClass("okhttp3.Interceptor.Chain", lpparam.classLoader)//参数类型
-        //第一个拦截器
-        XposedHelpers.findAndHookMethod(responseInterceptor.javaClass, "intercept", clsChain, object : XC_MethodHook() {
-          override fun beforeHookedMethod(param: MethodHookParam?) {
-            super.beforeHookedMethod(param)
-            if (param == null) return
-            printRequestInfo(currentIndexOkHttp, param)//处理之前打印
+        //------------------监听拦截器【Request：先添加先执行；Response：先添加后执行】------------------//
+        if (interceptors.size <= 1) {
+          interceptors.add(logInterceptor)//拦截器数量小于2，默认没有加解密，直接添加
+        } else {//2个以及以上，简单判断一下是否加解密
+          val hasCode = interceptors.map { a -> a.javaClass.simpleName.lowercase() }.any { a -> a.contains("enc") || a.contains("dec") }
+          if (hasCode) {
+            interceptors.add(interceptors.size - 2, logInterceptor)
+          } else {
+            interceptors.add(logInterceptor)
           }
-        })
-        //最后一个拦截器
-        XposedHelpers.findAndHookMethod(requestInterceptor.javaClass, "intercept", clsChain, object : XC_MethodHook() {
-          override fun afterHookedMethod(param: MethodHookParam?) {
-            super.afterHookedMethod(param)
-            if (param == null) return
-            printResponseInfo(currentIndexOkHttp, param)
-          }
-        })
-        return
+        }
       }
     })
   }
   //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="防止重复请求">
-  //请求耗时处理(TAG+请求开始时间)【请求成功会清理】
-  private val mTimeMaps = mutableMapOf<String, Long>()
-
-  //防止多个拦截器重复打印请求(TAG+上次请求时间)【不清理】
-  private val mRequestMaps = mutableMapOf<String, Long>()
-  //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="打印请求信息">
-  private fun printRequestInfo(index: Int, param: XC_MethodHook.MethodHookParam) {
+  private fun printRequestInfo(param: XC_MethodHook.MethodHookParam) {
     val request = XposedHelpers.callMethod(param.args.first(), "request")//Chain.request()
     val url = XposedHelpers.getObjectField(request, "url")//读取对象 Request.url
     if (!(url?.toString() ?: "").lowercase().startsWith("http")) {
@@ -157,48 +158,47 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
       sb.append("\n\n请求体:\n")
         .append(if (requestParams.isBlank()) "有请求Body,可能被混淆了，无法读取" else MyUtils.jsonFormat(bodyStr))
     }
-    val tag = "${url.hashCode()}_${requestParams.hashCode()}".replace("-", "")
-    val lastTime = mRequestMaps[tag] ?: 0L
-    val currentTime = System.nanoTime()
-    val tookMs = TimeUnit.NANOSECONDS.toMillis(currentTime - lastTime)
-    if (tookMs < 3000) return//3秒内防止重复请求
-    mRequestMaps[tag] = currentTime
-    //记录请求时间
-    mTimeMaps[tag] = currentTime
+    val requestHash = Math.abs(request.hashCode())
     sb.append("\n<<<<<<<<Okhttp.Request.END<<<-------------------------------------")
     //打印
-    //XposedBridge.log("接口请求: $method $url $tag ${if (time == 0L) "" else "${tookMs}ms"}")//单独打印哪些接口发起了请求
+    XposedBridge.log("Hook 简单打印 请求${requestHash} OkHttp 接口请求: $method $url")//单独打印接口请求信息
     XposedBridge.log(sb.toString())
+    //设置请求时间
+    val tags = XposedHelpers.getObjectField(request, "tags") as Map<Class<*>, Any>
+    val newMaps: MutableMap<Class<*>, Any> = mutableMapOf()
+    tags.entries.forEach { m -> newMaps[m.key] = m.value }
+    newMaps[java.lang.Long::class.java] = java.lang.Long.valueOf(System.nanoTime())
+    XposedHelpers.setObjectField(request, "tags", newMaps)
   }
   //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="打印响应信息">
-  private fun printResponseInfo(index: Int, param: XC_MethodHook.MethodHookParam) {
+  private fun printResponseInfo(param: XC_MethodHook.MethodHookParam) {
     val request = XposedHelpers.callMethod(param.args.first(), "request")//Chain.request()
     val url = XposedHelpers.getObjectField(request, "url")//读取对象 Request.url
     val method = XposedHelpers.getObjectField(request, "method")//读取对象 Request.method
-    val requestBody = XposedHelpers.getObjectField(request, "body")//读取对象 Request.body
-    var requestParams = ""
-    requestBody?.let { bo -> requestParams = requestBody2String(bo) }
-    val tag = "${url.hashCode()}_${requestParams.hashCode()}".replace("-", "")
-    if (!mTimeMaps.containsKey(tag)) return//如果没有在请求里，则不进行响应
+    val startTime = XposedHelpers.callMethod(request, "tag", java.lang.Long::class.java)?.toString()?.toLong() ?: 0L
+    val currentTime = System.nanoTime()
+    val tookMs = TimeUnit.NANOSECONDS.toMillis(currentTime - startTime)
+    val requestHash = Math.abs(request.hashCode())
     if (param.throwable != null) {//响应失败
-      XposedBridge.log("第${index}个OkHttp ${request.hashCode()} 请求失败：${url} ${param.throwable.message}")
+      XposedBridge.log("Hook 简单打印 请求${requestHash} 请求失败：$method ${tookMs}ms $url ${param.throwable.message}")//单独打印接口请求信息
     } else {//响应成功
+      val isMedia = MyUtils.isMediaType(url?.toString() ?: "")
+      if (isMedia) {//媒体类不打印
+        XposedBridge.log(Throwable("Hook OkHttp媒体类不打印:$url"))
+        return
+      }
       //入参okhttp3.Request
       val requestHeaders = XposedHelpers.getObjectField(request, "headers")//读取对象 Request.headers
       if (requestHeaders.toString().isBlank()) return//没有请求头的默认非接口请求
       //出参okhttp3.Response
       param.result?.let { response ->
-        val startTime = mRequestMaps[tag] ?: 0L
-        val currentTime = System.nanoTime()
-        val tookMs = TimeUnit.NANOSECONDS.toMillis(currentTime - startTime)
-        mTimeMaps.remove(tag)//有可能出现后请求先响应，这样就会导致时间不准确的情况
         //请求结果
         val responseHeaders = XposedHelpers.getObjectField(response, "headers").toString().trim()//读取对象 Response.headers
         val sb = StringBuilder()
         sb.append(">>>>>>>>Okhttp.Response.START>>>----------------------------------->")
-        //XposedBridge.log("接口响应: $method ${tookMs}ms $url")//单独打印过滤响应请求时长
+        XposedBridge.log("Hook 简单打印 请求${requestHash} OkHttp 接口响应: $method ${tookMs}ms $url")//单独打印接口响应时长
         sb.append("\n响应接口:  ").append(method).append("  ").append(tookMs).append("ms").append("  ").append(url)
           .append("\n\n响应头:\n").append(responseHeaders)
         val responseBody = XposedHelpers.getObjectField(response, "body")//Response.ResponseBody
