@@ -69,12 +69,14 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
     XposedHelpers.findAndHookMethod(logInterceptor.javaClass, "intercept", clsChain, object : XC_MethodHook() {
       override fun beforeHookedMethod(param: MethodHookParam) {
         super.beforeHookedMethod(param)
-        printRequestInfo(param)//处理之前打印
+        val cache = XposedHelpers.getObjectField(param.thisObject, "cache")//判断cache对象是否为空，如果为空则表示是我们自己设置的，毕竟真实项目中不太可能设置空cache
+        if (cache == null) printRequestInfo(param)//处理之前打印
       }
 
       override fun afterHookedMethod(param: MethodHookParam) {
         super.afterHookedMethod(param)
-        printResponseInfo(param)
+        val cache = XposedHelpers.getObjectField(param.thisObject, "cache")//判断cache对象是否为空，如果为空则表示是我们自己设置的，毕竟真实项目中不太可能设置空cache
+        if (cache == null) printResponseInfo(param)
       }
     })
     //------------------------------------监听OkHttp构造------------------------------------//
