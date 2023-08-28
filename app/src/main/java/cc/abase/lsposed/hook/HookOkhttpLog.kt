@@ -162,12 +162,12 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
     val request = XposedHelpers.callMethod(param.args.first(), "request")//Chain.request()
     val url = XposedHelpers.getObjectField(request, "url")//读取对象 Request.url
     if (!(url?.toString() ?: "").lowercase().startsWith("http")) {
-      XposedBridge.log(Throwable("Hook OkHttp请求地址异常:$url"))
+      XposedBridge.log("Hook OkHttp请求地址异常:$url")
       return
     }
     val isMedia = MyUtils.isMediaType(url?.toString() ?: "")
     if (isMedia) {//媒体类不打印
-      XposedBridge.log(Throwable("Hook OkHttp媒体类不打印:$url"))
+      XposedBridge.log("Hook OkHttp媒体类不打印:$url")
       return
     }
     val method = XposedHelpers.getObjectField(request, "method")//读取对象 Request.method
@@ -211,7 +211,7 @@ class HookOkhttpLog(private val lpparam: XC_LoadPackage.LoadPackageParam) {
     } else {//响应成功
       val isMedia = MyUtils.isMediaType(url?.toString() ?: "")
       if (isMedia) {//媒体类不打印
-        XposedBridge.log(Throwable("Hook OkHttp媒体类不打印:$url"))
+        XposedBridge.log("Hook OkHttp媒体类不打印:$url")
         return
       }
       //出参okhttp3.Response
