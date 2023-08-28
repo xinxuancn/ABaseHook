@@ -2,6 +2,7 @@ package cc.abase.lsposed.utils
 
 import android.app.ActivityManager
 import android.content.Context
+import android.net.Uri
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import java.util.regex.Pattern
@@ -101,6 +102,16 @@ object MyUtils {
       if (parseString.isJsonPrimitive) parseString.asJsonPrimitive.asString else json
     } else {
       json
+    }
+  }
+
+  //请求地址转义处理
+  fun formatUrl(url: String): String {
+    return try {
+      Uri.decode(url)
+    } catch (e: Exception) {
+      e.printStackTrace()
+      url
     }
   }
 }
