@@ -3,9 +3,14 @@ package cc.abase.lsposed.utils
 import android.app.ActivityManager
 import android.content.Context
 import android.net.Uri
+import android.util.Base64
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
+import de.robv.android.xposed.XposedBridge
+import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 
 
 /**
@@ -52,11 +57,6 @@ object MyUtils {
       }
     }
     return ""
-  }
-
-  //GZIP解压缩
-  fun decompressGzipString(gzipString: String): String {
-    return gzipString.toByteArray().ungzip()
   }
 
   //Json数据格式化显示
@@ -112,6 +112,22 @@ object MyUtils {
     } catch (e: Exception) {
       e.printStackTrace()
       url
+    }
+  }
+
+  //GZIP加密
+  fun gzip(str: String): String {
+    return Base64.encodeToString(ByteArrayOutputStream().also { bos -> GZIPOutputStream(bos).use { it.write(str.toByteArray()) } }.toByteArray(), Base64.NO_WRAP)
+  }
+
+  //解密
+  fun unGzip(str: String): String {
+    return try {
+      String(GZIPInputStream(Base64.decode(str, Base64.NO_WRAP).inputStream()).use { it.readBytes() }, Charsets.UTF_8)
+    } catch (e: Exception) {
+      e.printStackTrace()
+      XposedBridge.log("GZIP解压失败:$str")
+      str
     }
   }
 }
