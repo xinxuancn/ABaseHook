@@ -9,6 +9,6 @@ fun String.gzip(): String {
   return Base64.encodeToString(ByteArrayOutputStream().also { bos -> GZIPOutputStream(bos).use { it.write(this.toByteArray()) } }.toByteArray(), Base64.NO_WRAP)
 }
 
-fun String.ungzip(): String {
+fun String.unGzip(): String {
   return String(GZIPInputStream(Base64.decode(this, Base64.NO_WRAP).inputStream()).use { it.readBytes() }, Charsets.UTF_8)
 }
