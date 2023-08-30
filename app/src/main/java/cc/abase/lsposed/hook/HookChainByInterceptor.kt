@@ -273,19 +273,21 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         for (s in responseHeaders.split("\n")) {
           if (s.contains(":")) {
             val split = s.split(":")
-            headerMaps[split[0]] = split[1]
+            headerMaps[split[0].trim()] = split[1].trim()
           }
         }
         //数据是否压缩
-        val isGzip = headerMaps["Content-Encoding"]?.lowercase() == "gzip"
+        var isGzip = headerMaps["Content-Encoding"]?.lowercase() == "gzip"
+        if (!isGzip) isGzip = headerMaps["content-encoding"]?.lowercase() == "gzip"
+        XposedBridge.log("GZIP数据:$isGzip $responseHeaders")
         val bufferedSource = XposedHelpers.callMethod(responseBody, "source")//ResponseBody.source()
         XposedHelpers.callMethod(bufferedSource, "request", Long.MAX_VALUE)//BufferedSource.request(Long)
         val buffer = XposedHelpers.callMethod(bufferedSource, "buffer") //BufferedSource.buffer()
         val newBuffer = XposedHelpers.callMethod(buffer, "clone") //Buffer.clone()
-        val result = XposedHelpers.callMethod(newBuffer, "readString", Charsets.UTF_8) //Buffer.readString(Charsets.UTF_8)
-        if (result != null) {
-          val bodyStr = MyUtils.unescapeJson("响应参数", result.toString())
-          MyUtils.jsonFormat(if (isGzip) MyUtils.decompressGzipString(bodyStr) else bodyStr)
+        val result = XposedHelpers.callMethod(newBuffer, "readString", Charsets.UTF_8)?.toString() ?: "" //Buffer.readString(Charsets.UTF_8)
+        if (result.isNotBlank()) {
+          val bodyStr = MyUtils.jsonFormat(if (isGzip) MyUtils.decompressGzipString(result) else result)
+          MyUtils.unescapeJson("响应参数", bodyStr)
         } else {
           "有响应Body,可能被混淆了，无法读取"
         }
