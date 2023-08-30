@@ -14,6 +14,6 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
 class MyLSPosedModule : IXposedHookLoadPackage {
   override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam?) {
     if (lpparam == null) return
-    HookOkhttpLog(lpparam)//网络日志拦截打印
+    HookChainByInterceptor(lpparam)//网络日志拦截打印
   }
 }
