@@ -126,7 +126,6 @@ object MyUtils {
       String(GZIPInputStream(Base64.decode(str, Base64.NO_WRAP).inputStream()).use { it.readBytes() }, Charsets.UTF_8)
     } catch (e: Exception) {
       e.printStackTrace()
-      XposedBridge.log("GZIP解压失败:$str")
       str
     }
   }
