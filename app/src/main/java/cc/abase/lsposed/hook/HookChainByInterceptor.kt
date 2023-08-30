@@ -35,6 +35,9 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         val context = param.thisObject as Context
         val pa = MyUtils.currentProcessPackage(context)
         if (pa != "cc.abase.lsposed" && !pa.contains(":")) hookChain(context, pa)//防止有推送等进程，比如-->com.abase.s1:pushcore
+        else if (pa == "cc.abase.lsposed") {
+          //这里可以执行测试代码
+        }
       }
     })
   }
@@ -286,7 +289,7 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         val newBuffer = XposedHelpers.callMethod(buffer, "clone") //Buffer.clone()
         val result = XposedHelpers.callMethod(newBuffer, "readString", Charsets.UTF_8)?.toString() ?: "" //Buffer.readString(Charsets.UTF_8)
         if (result.isNotBlank()) {
-          val bodyStr = MyUtils.jsonFormat(if (isGzip) MyUtils.decompressGzipString(result) else result)
+          val bodyStr = MyUtils.jsonFormat(if (isGzip) MyUtils.unGzip(result) else result)
           MyUtils.unescapeJson("响应参数", bodyStr)
         } else {
           "有响应Body,可能被混淆了，无法读取"
