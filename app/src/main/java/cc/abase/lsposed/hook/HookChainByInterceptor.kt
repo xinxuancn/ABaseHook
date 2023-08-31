@@ -2,12 +2,14 @@ package cc.abase.lsposed.hook
 
 import android.app.Application
 import android.content.Context
+import cc.abase.lsposed.bean.LogInfoBan
+import cc.abase.lsposed.livedata.AppLiveData
 import cc.abase.lsposed.utils.MyUtils
 import de.robv.android.xposed.*
 import de.robv.android.xposed.callbacks.XC_LoadPackage
-import java.util.concurrent.TimeUnit
 
 /**
+ * 这里用到了不同进程同步消息，使用的是广播模式，否则2个APP没办法进行数据同步
  * 原文地址：https://blog.csdn.net/moziqi123/article/details/109204801
  * Author:Khaos
  * Date:2023/8/28
@@ -34,8 +36,8 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
       override fun afterHookedMethod(param: MethodHookParam) {
         val context = param.thisObject as Context
         val pa = MyUtils.currentProcessPackage(context)
-        if (pa != "cc.abase.lsposed" && !pa.contains(":")) hookChain(context, pa)//防止有推送等进程，比如-->com.abase.s1:pushcore
-        else if (pa == "cc.abase.lsposed") {
+        if (pa != AppLiveData.myPackageName && !pa.contains(":")) hookChain(context, pa)//防止有推送等进程，比如-->com.abase.s1:pushcore
+        else if (pa == AppLiveData.myPackageName) {
           //这里可以执行测试代码
         }
       }
@@ -138,7 +140,7 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
           needPrint = if (tagInterceptors.isBlank()) true else tagInterceptor == tagInterceptors.split(",").last()//直接在最后一个拦截器打印
         }
         if (needPrint) {
-          printResponseInfo(param)
+          printResponseInfo(context, param)
           //已经打印需要把当前请求设置为已打印，否则会再次发起同样的请求
           val oldBuilder1 = XposedHelpers.callMethod(responseHeaders, "newBuilder") //Headers.Builder
           val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagPrint, "true")
@@ -199,7 +201,7 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
     var requestParams = ""
     requestBody?.let { bo ->
       requestParams = requestBody2String(bo)
-      val bodyStr = MyUtils.unescapeJson("请求参数", requestParams)
+      val bodyStr = MyUtils.unescapeJson(requestParams)
       sb.append("\n\n请求体:\n")
         .append(if (requestParams.isBlank()) "有请求Body,可能被混淆了，无法读取" else MyUtils.jsonFormat(bodyStr))
     }
@@ -211,20 +213,22 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
     val tags = XposedHelpers.getObjectField(request, "tags") as Map<Class<*>, Any>
     val newMaps: MutableMap<Class<*>, Any> = mutableMapOf()
     tags.entries.forEach { m -> newMaps[m.key] = m.value }
-    newMaps[java.lang.Long::class.java] = java.lang.Long.valueOf(System.nanoTime())
+    newMaps[java.lang.Long::class.java] = java.lang.Long.valueOf(System.currentTimeMillis())
     XposedHelpers.setObjectField(request, "tags", newMaps)
   }
   //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="打印响应信息">
-  private fun printResponseInfo(param: XC_MethodHook.MethodHookParam) {
+  private fun printResponseInfo(context: Context, param: XC_MethodHook.MethodHookParam) {
     val request = param.args.first()//okhttp3.Request
     var url = XposedHelpers.getObjectField(request, "url")?.toString() ?: ""//读取对象 Request.url
     url = MyUtils.formatUrl(url)
-    val method = XposedHelpers.getObjectField(request, "method")//读取对象 Request.method
+    val method = XposedHelpers.getObjectField(request, "method")?.toString() ?: ""//读取对象 Request.method
     val startTime = XposedHelpers.callMethod(request, "tag", java.lang.Long::class.java)?.toString()?.toLong() ?: 0L
-    val currentTime = System.nanoTime()
-    val tookMs = TimeUnit.NANOSECONDS.toMillis(currentTime - startTime)
+    val currentTime = System.currentTimeMillis()
+    val tookMs = currentTime - startTime
+    val result = param.result
+    var responseBodyStr = ""
     if (param.throwable != null) {//响应失败
       XposedBridge.log("$TAG 简单打印 请求失败：$method ${tookMs}ms $url ${param.throwable.message}")//单独打印接口请求信息
     } else {//响应成功
@@ -234,7 +238,7 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         return
       }
       //出参okhttp3.Response
-      param.result?.let { response ->//OKHttp从3.3.0起添加了sentRequestAtMillis和receivedResponseAtMillis
+      result?.let { response ->//OKHttp从3.3.0起添加了sentRequestAtMillis和receivedResponseAtMillis
         //请求结果
         val responseHeaders = XposedHelpers.getObjectField(response, "headers").toString().trim()//读取对象 Response.headers
         val sb = StringBuilder()
@@ -243,12 +247,29 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         sb.append("\n响应接口:  ").append(method).append("  ").append(tookMs).append("ms").append("  ").append(url)
           .append("\n\n响应头:\n").append(responseHeaders)
         val responseBody = XposedHelpers.getObjectField(response, "body")//Response.ResponseBody
-        responseBody?.let { bo -> sb.append("\n\n响应体:\n").append(responseBody2String(responseHeaders, bo)) }
+        responseBody?.let { bo ->
+          val p = responseBody2String(responseHeaders, bo)
+          responseBodyStr = p.second
+          sb.append("\n\n响应体:\n").append(p.first)
+        }
         sb.append("\n<<<<<<<<Okhttp.Response.END<<<-------------------------------------")
         //打印
         XposedBridge.log(sb.toString())
       }
     }
+    val requestBody = XposedHelpers.getObjectField(request, "body")
+    val info = LogInfoBan(
+      url = url,
+      method = method,
+      requestSysTime = startTime,
+      requestHeader = XposedHelpers.getObjectField(request, "headers").toString().trim(),
+      requestParams = if (requestBody == null) "" else requestBody2String(requestBody),
+      responseSysTime = currentTime,
+      responseHeader = if (result != null) XposedHelpers.getObjectField(request, "headers").toString().trim() else "",
+      responseBody = responseBodyStr,
+      responseError = param.throwable,
+    )
+    AppLiveData.sendBroadcastWithData(context, MyUtils.toJson(info))
   }
   //</editor-fold>
 
@@ -266,9 +287,11 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
   //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="Response.body的String【已格式化】">
-  private fun responseBody2String(responseHeaders: String, responseBody: Any): String {
+  private fun responseBody2String(responseHeaders: String, responseBody: Any): Pair<String, String> {
     val mediaType = XposedHelpers.callMethod(responseBody, "contentType")//ResponseBody.contentType()
     return if (mediaType != null) {
+      var formatStr = ""
+      var originStr = ""
       val subtype = XposedHelpers.getObjectField(mediaType, "subtype")//MediaType.subtype
       if (MyUtils.isCanParsable(subtype?.toString())) {//通过响应类型判断，可以解析的才解析
         //响应头处理
@@ -282,23 +305,35 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         //数据是否压缩
         var isGzip = headerMaps["Content-Encoding"]?.lowercase() == "gzip"
         if (!isGzip) isGzip = headerMaps["content-encoding"]?.lowercase() == "gzip"
-        XposedBridge.log("GZIP数据:$isGzip $responseHeaders")
+        //https://github.com/square/okhttp/blob/parent-3.10.0/okhttp-logging-interceptor/src/main/java/okhttp3/logging/HttpLoggingInterceptor.java
         val bufferedSource = XposedHelpers.callMethod(responseBody, "source")//ResponseBody.source()
         XposedHelpers.callMethod(bufferedSource, "request", Long.MAX_VALUE)//BufferedSource.request(Long)
-        val buffer = XposedHelpers.callMethod(bufferedSource, "buffer") //BufferedSource.buffer()
-        val newBuffer = XposedHelpers.callMethod(buffer, "clone") //Buffer.clone()
-        val result = XposedHelpers.callMethod(newBuffer, "readString", Charsets.UTF_8)?.toString() ?: "" //Buffer.readString(Charsets.UTF_8)
+        var buffer = XposedHelpers.callMethod(bufferedSource, "buffer") //BufferedSource.buffer()
+        if (isGzip) {
+          val cloneBuffer = XposedHelpers.callMethod(buffer, "clone") //Buffer.clone()
+          val clsGzip = XposedHelpers.findClassIfExists("okio.GzipSource", lpparam.classLoader)
+          val clsBuffer = XposedHelpers.findClassIfExists("okio.Buffer", lpparam.classLoader)
+          val gzipSource = XposedHelpers.newInstance(clsGzip, cloneBuffer)//GzipSource(source: Source)
+          if (gzipSource != null) {
+            buffer = XposedHelpers.newInstance(clsBuffer)//Buffer()
+            XposedHelpers.callMethod(buffer, "writeAll", gzipSource)//buffer.writeAll(gzipSource)
+            XposedHelpers.callMethod(gzipSource, "close")//gzipSource.close()
+          }
+        }
+        val charset = XposedHelpers.callMethod(mediaType, "charset", Charsets.UTF_8) ?: Charsets.UTF_8//contentType.charset(UTF_8)
+        val cloneBuffer = XposedHelpers.callMethod(buffer, "clone") //Buffer.clone()
+        val result = XposedHelpers.callMethod(cloneBuffer, "readString", charset)?.toString() ?: "" //Buffer.readString(Charsets.UTF_8)
         if (result.isNotBlank()) {
-          val bodyStr = MyUtils.jsonFormat(if (isGzip) MyUtils.unGzip(result) else result)
-          MyUtils.unescapeJson("响应参数", bodyStr)
+          val bodyStr = MyUtils.jsonFormat(if (result.contains(MyUtils.gzipTag)) MyUtils.unGzip(result) else result)
+          Pair(MyUtils.unescapeJson(bodyStr), result)
         } else {
-          "有响应Body,可能被混淆了，无法读取"
+          Pair("有响应Body,可能被混淆了，无法读取", "")
         }
       } else {
-        "不解析该类型的响应体:${mediaType}"
+        Pair("不解析该类型的响应体:${mediaType}", "")
       }
     } else {
-      "没有contentType，不解析响应体"
+      Pair("没有contentType，不解析响应体", "")
     }
   }
   //</editor-fold>

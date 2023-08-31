@@ -9,7 +9,6 @@
 #############################################
 #            项目中特殊处理部分               #
 -keep class * implements de.robv.android.xposed.IXposedHookLoadPackage
-#-keep class cc.abase.lsposed.hook.** {*;}
 #############################################
 #             丧心病狂的混淆                #
 # 指定外部模糊字典 proguard-chinese.txt 改为混淆文件名，下同

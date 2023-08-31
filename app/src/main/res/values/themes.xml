@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-  <style name="Theme.ABaseHook" parent="android:Theme.Material.Light.NoActionBar" />
+  <style name="Theme.ABaseHook" parent="Theme.AppCompat.Light.NoActionBar">
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowIsTranslucent">false</item>
+    <item name="android:overScrollMode">never</item>
+    <item name="android:includeFontPadding">true</item>
+    <item name="android:scrollbarStyle">insideOverlay</item>
+    <item name="android:fadeScrollbars">false</item>
+    <item name="android:scrollbars">vertical</item>
+    <item name="android:scrollbarFadeDuration">0</item>
+    <item name="android:scrollbarThumbVertical">@drawable/scrollbar_vertical_thumb</item>
+    <item name="android:scrollbarTrackVertical">@drawable/scrollbar_vertical_track</item>
+  </style>
 </resources>

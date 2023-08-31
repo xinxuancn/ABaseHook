@@ -1,15 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
-  android:layout_height="match_parent">
+  android:layout_height="match_parent"
+  android:fitsSystemWindows="true">
 
-  <TextView
+  <LinearLayout
+    android:id="@+id/llTitle"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center"
-    android:includeFontPadding="true"
-    android:text="准备编写一个HookDemo"
+    android:layout_height="40dp"
+    android:background="@drawable/shape_s1_gray_trans"
+    android:orientation="horizontal"
+    app:layout_constraintTop_toTopOf="parent">
+
+    <TextView
+      android:id="@+id/tvPause"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="暂停消息"
+      android:textColor="#FF888888"
+      android:textSize="14sp"
+      tools:ignore="HardcodedText" />
+
+    <View
+      android:layout_width="1dp"
+      android:layout_height="match_parent"
+      android:background="@color/gray_C0C0C0" />
+
+    <TextView
+      android:id="@+id/tvStart"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="开始消息"
+      android:textColor="@color/black"
+      android:textSize="14sp"
+      tools:ignore="HardcodedText" />
+
+    <View
+      android:layout_width="1dp"
+      android:layout_height="match_parent"
+      android:background="@color/gray_C0C0C0" />
+
+    <TextView
+      android:id="@+id/tvClear"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="清除数据"
+      android:textColor="@color/black"
+      android:textSize="14sp"
+      tools:ignore="HardcodedText" />
+  </LinearLayout>
+
+  <androidx.appcompat.widget.AppCompatEditText
+    android:id="@+id/etSearch"
+    android:layout_width="match_parent"
+    android:layout_height="40dp"
+    android:layout_marginTop="-1dp"
+    android:background="@drawable/shape_s1_gray_trans"
+    android:hint="输入内容可进行筛选"
+    android:maxLength="50"
+    android:paddingHorizontal="10dp"
+    android:singleLine="true"
     android:textColor="@color/black"
-    android:textSize="16sp"
-    android:textStyle="bold" />
-</FrameLayout>
+    android:textColorHint="@color/gray_CCCCCC"
+    android:textSize="14sp"
+    app:layout_constraintTop_toBottomOf="@id/llTitle"
+    tools:ignore="HardcodedText" />
+
+  <androidx.recyclerview.widget.RecyclerView
+    android:id="@+id/recycler"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:clipToPadding="false"
+    android:fadeScrollbars="false"
+    android:overScrollMode="always"
+    android:paddingBottom="15dp"
+    android:scrollbarFadeDuration="0"
+    android:scrollbarStyle="insideOverlay"
+    android:scrollbarThumbVertical="@drawable/scrollbar_vertical_thumb"
+    android:scrollbarTrackVertical="@drawable/scrollbar_vertical_track"
+    android:scrollbars="vertical"
+    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/etSearch"
+    tools:itemCount="10"
+    tools:listitem="@layout/item_info_parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:fadeScrollbars="false"
+  android:fitsSystemWindows="true"
+  android:scrollbarStyle="insideOverlay"
+  android:scrollbarThumbVertical="@drawable/scrollbar_vertical_thumb"
+  android:scrollbarTrackVertical="@drawable/scrollbar_vertical_track"
+  android:scrollbars="vertical">
+
+  <LinearLayout
+    android:id="@+id/llContent"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="10dp"
+    android:paddingBottom="15dp">
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingHorizontal="4dp"
+      android:paddingVertical="2dp"
+      android:text="请求信息"
+      android:textColor="@color/blue_00C78C"
+      android:textSize="14sp"
+      tools:ignore="HardcodedText" />
+
+    <TextView
+      android:id="@+id/tvRequestTime"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/gray"
+      android:textSize="12sp"
+      tools:text="2023-08-31 11:44:01" />
+
+    <TextView
+      android:id="@+id/tvRequestUrl"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/green_308014"
+      android:textIsSelectable="true"
+      android:textSize="12sp"
+      tools:text="https://kohcamp.qq.com/app/easyconf/batchgetjson" />
+
+    <TextView
+      android:id="@+id/tvRequestMethod"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/purple_9933FA"
+      android:textSize="12sp"
+      tools:text="POST" />
+
+    <TextView
+      android:id="@+id/tvRequestHeader"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/brown_BC8F8F"
+      android:textIsSelectable="true"
+      android:textSize="12sp"
+      tools:text="hookInterceptors: com.tencent.gamehelper.common.net.interceptor.PreloadInterceptor,com.tencent.gamehelper.common.net.interceptor.RetryInterceptor\nhookInterceptor: com.tencent.gamehelper.common.net.interceptor.RetryInterceptor" />
+
+    <TextView
+      android:id="@+id/tvRequestParams"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/green_2E8B57"
+      android:textIsSelectable="true"
+      android:textSize="12sp"
+      tools:text="{\n    ''isCompress'': 0,\n    ''tags'': [\n               ''dsl_config'',\n               ''dsl_font_config'',\n               ''dsl_im_config''\n    ],\n    ''type'': 0\n}" />
+
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="0.5dp"
+      android:layout_marginVertical="10dp"
+      android:background="@color/purple_DDA0DD" />
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingHorizontal="4dp"
+      android:paddingVertical="2dp"
+      android:text="响应信息"
+      android:textColor="@color/blue"
+      android:textSize="14sp"
+      tools:ignore="HardcodedText" />
+
+    <TextView
+      android:id="@+id/tvResponseTime"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/gray"
+      android:textSize="12sp"
+      tools:text="2023-08-31 11:46:21" />
+
+    <TextView
+      android:id="@+id/tvResponseDuration"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/magenta"
+      android:textSize="12sp"
+      tools:text="725ms" />
+
+    <TextView
+      android:id="@+id/tvResponseHeader"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/brown_D2691E"
+      android:textIsSelectable="true"
+      android:textSize="12sp"
+      tools:text="date: Thu, 31 Aug 2023 04:41:28 GMT
+      \ncontent-type: application/json; charset=UTF-8
+      \ncontent-length: 145
+      \nset-cookie: tgw_l7_route=d31d929196da2281bdf84024819c02a1; Expires=Thu, 31-Aug-2023 05:11:27 GMT; Path=/
+      \nx-content-type-options: nosniff
+      \nserver: TAPISIX/2.1.9
+      \naccess-control-max-age: 3600
+      \naccess-control-allow-methods: GET, POST, OPTIONS" />
+
+    <TextView
+      android:id="@+id/tvResponseBody"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/blue_3D59AB"
+      android:textIsSelectable="true"
+      android:textSize="12sp"
+      tools:text="{\n    ''return_code'': 0,\n    ''result'': 0,\n    ''return_msg'': '''''''',
+      \n    ''data'': {
+      \n        ''video_userid'': ''687198163'',
+      \n        ''video_sessionkey'': ''OKqrwlMpDfMo_3Tz7wRl0Q.N'',
+      \n        ''expire_time'': 6600
+      \n    }
+      \n}" />
+
+    <TextView
+      android:id="@+id/tvResponseError"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:paddingVertical="2dp"
+      android:textColor="@color/red"
+      android:textSize="12sp"
+      tools:text="接口请求异常" />
+  </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -2,7 +2,6 @@ object Versions {
   const val sdkMin = 23
   const val sdkTarget = 33
   const val kotlin = "1.8.21"
-  const val okHttp = "4.10.0"
   const val gradle = "8.0.2"
   //Gradle版本对照 https://developer.android.google.cn/studio/releases/gradle-plugin?hl=zh-cn#groovy
   //插件版本	所需的最低Gradle版本(https\://services.gradle.org/distributions/gradle-7.5-bin.zip)
@@ -23,11 +22,4 @@ object Versions {
   //Chipmunk | 2021.2.1	3.2-7.2
   //Bumblebee | 2021.1.1	3.2-7.1
   //Arctic Fox | 2020.3.1	3.1-7.0
-}
-
-object Deps {
-  //<editor-fold defaultstate="collapsed" desc="Studio基础配置">
-  //网络请求 https://github.com/square/okhttp
-  const val okhttp = "com.squareup.okhttp3:okhttp:${Versions.okHttp}"
-  //</editor-fold>
 }

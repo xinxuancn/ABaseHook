@@ -7,6 +7,8 @@ import android.util.Base64
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import de.robv.android.xposed.XposedBridge
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
@@ -22,6 +24,7 @@ import java.util.zip.GZIPOutputStream
  * Time:17:18
  */
 object MyUtils {
+  val gzipTag="H4sIAA"
   val myGsonFormat = GsonBuilder().serializeNulls().disableHtmlEscaping().create()
   val myGsonPrint = GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create()
 
@@ -95,7 +98,7 @@ object MyUtils {
   }
 
   //去除转义
-  fun unescapeJson(tag: String, json: String): String {
+  fun unescapeJson(json: String): String {
     //XposedBridge.log("$tag 转义前数据:$json")
     return if (json.startsWith("{") || json.startsWith("[")) {
       val parseString = JsonParser.parseString(json)
@@ -123,8 +126,40 @@ object MyUtils {
   //解密
   fun unGzip(str: String): String {
     return try {
-      String(GZIPInputStream(Base64.decode(str, Base64.NO_WRAP).inputStream()).use { it.readBytes() }, Charsets.UTF_8)
+      if (str.startsWith("{") && str.endsWith("}")) {
+        val jsonObject = JSONObject(str)
+        if (jsonObject.has("data")) {
+          val data = jsonObject.optString("data")
+          if (data.startsWith(gzipTag)) {
+            val newData = String(GZIPInputStream(Base64.decode(data, Base64.NO_WRAP).inputStream()).use { it.readBytes() }, Charsets.UTF_8)
+            val map: MutableMap<String, Any> = HashMap()
+            for (key in jsonObject.keys()) {
+              map[key] = if (key == "data") {
+                if (newData.startsWith("{") && newData.endsWith("}")) {
+                  JSONObject(newData)
+                } else if (newData.startsWith("[") && newData.endsWith("]")) {
+                  JSONArray(newData)
+                } else {
+                  newData
+                }
+              } else {
+                jsonObject[key]
+              }
+            }
+            XposedBridge.log("解析后的数据:$newData")
+            return toJson(map)
+          }
+        }
+        return str
+      }
+      if (str.startsWith("[") && str.endsWith("]")) return str
+      if (str.startsWith(gzipTag)) {
+        String(GZIPInputStream(Base64.decode(str, Base64.NO_WRAP).inputStream()).use { it.readBytes() }, Charsets.UTF_8)
+      } else {
+        str
+      }
     } catch (e: Exception) {
+      XposedBridge.log(e)
       e.printStackTrace()
       str
     }
