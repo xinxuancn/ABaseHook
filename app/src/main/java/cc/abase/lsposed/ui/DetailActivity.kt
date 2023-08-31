@@ -49,20 +49,25 @@ class DetailActivity : BaseBindingActivity<ActivityDetailBinding>() {
       vb.tvRequestUrl.text = first.url
       vb.tvRequestMethod.text = first.method
       vb.tvRequestHeader.text = first.requestHeader
-      vb.tvRequestParams.text = MyUtils.unescapeJson(first.requestParams)
+      vb.tvRequestParams.text = MyUtils.unescapeJson(MyUtils.jsonFormat(first.requestParams))
       vb.tvRequestHeader.visibility = if (first.requestHeader.isBlank()) View.GONE else View.VISIBLE
       vb.tvRequestParams.visibility = if (first.requestParams.isBlank()) View.GONE else View.VISIBLE
       vb.tvResponseTime.text = sdf.format(t2)
       vb.tvResponseDuration.text = "${t3}ms"
       vb.tvResponseHeader.text = first.responseHeader
-      val needDecrypt = first.responseBody.contains(MyUtils.gzipTag)
-      vb.tvResponseBody.text = if (needDecrypt) "正在解密数据..." else first.responseBody
+      vb.tvResponseBody.text = "正在处理数据..."
       vb.tvResponseError.text = first.responseError?.toString() ?: ""
       vb.tvResponseHeader.visibility = if (first.responseHeader.isBlank()) View.GONE else View.VISIBLE
       vb.tvResponseBody.visibility = if (first.responseBody.isBlank()) View.GONE else View.VISIBLE
       vb.tvResponseError.visibility = if ((first.responseError?.toString() ?: "").isBlank()) View.GONE else View.VISIBLE
-      if (needDecrypt) lifecycleScope.launch(Dispatchers.Main) {
-        withContext(Dispatchers.IO) { MyUtils.unescapeJson(MyUtils.unGzip(first.responseBody)) }.let { s ->
+      lifecycleScope.launch(Dispatchers.Main) {
+        withContext(Dispatchers.IO) {
+          if (first.responseBody.contains(MyUtils.gzipTag)) {
+            MyUtils.unescapeJson(MyUtils.jsonFormat(MyUtils.unGzip(first.responseBody)))
+          } else {
+            MyUtils.unescapeJson(MyUtils.jsonFormat(first.responseBody))
+          }
+        }.let { s ->
           vb.tvResponseBody.text = s
         }
       }
