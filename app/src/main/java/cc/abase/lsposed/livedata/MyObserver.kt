@@ -1,5 +1,6 @@
 package cc.abase.lsposed.livedata
 
+import android.util.Log
 import de.robv.android.xposed.XposedBridge
 
 /**
@@ -12,7 +13,7 @@ open class MyObserver<T>(private val changed: (t: T) -> Unit) : androidx.lifecyc
     try {
       changed.invoke(value)
     } catch (e: Exception) {
-      XposedBridge.log(e)
+      e.printStackTrace()
     }
   }
 }

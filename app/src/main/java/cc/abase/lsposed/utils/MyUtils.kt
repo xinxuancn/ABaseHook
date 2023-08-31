@@ -99,7 +99,6 @@ object MyUtils {
 
   //去除转义
   fun unescapeJson(json: String): String {
-    //XposedBridge.log("$tag 转义前数据:$json")
     return if (json.startsWith("{") || json.startsWith("[")) {
       val parseString = JsonParser.parseString(json)
       if (parseString.isJsonPrimitive) parseString.asJsonPrimitive.asString else json
@@ -146,7 +145,6 @@ object MyUtils {
                 jsonObject[key]
               }
             }
-            XposedBridge.log("解析后的数据:$newData")
             return toJson(map)
           }
         }
@@ -159,7 +157,6 @@ object MyUtils {
         str
       }
     } catch (e: Exception) {
-      XposedBridge.log(e)
       e.printStackTrace()
       str
     }
