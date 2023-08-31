@@ -158,6 +158,7 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
   private fun hookInterceptor(list: MutableList<Class<*>>, clsChain: Class<*>) {
     for (cls in list) {
       if (!mInterceptorList.contains(cls)) {
+        mInterceptorList.add(cls)
         XposedHelpers.findAndHookMethod(cls, "intercept", clsChain, object : XC_MethodHook() {
           override fun beforeHookedMethod(param: MethodHookParam) {
             super.beforeHookedMethod(param)
