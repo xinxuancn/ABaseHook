@@ -1,46 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
   xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:background="?attr/selectableItemBackground">
+  android:background="?attr/selectableItemBackground"
+  android:orientation="vertical">
 
-  <TextView
-    android:id="@+id/tvTime"
-    android:layout_width="wrap_content"
+  <LinearLayout
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="5dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:paddingHorizontal="10dp"
-    android:textColor="@color/gray"
-    android:textSize="12sp"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent"
-    tools:text="2023-08-31 11:44:01" />
+    android:paddingTop="5dp">
 
-  <TextView
-    android:id="@+id/tvDuration"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:textColor="@color/magenta"
-    android:textSize="12sp"
-    app:layout_constraintBottom_toBottomOf="@id/tvTime"
-    app:layout_constraintStart_toEndOf="@id/tvTime"
-    app:layout_constraintTop_toTopOf="@id/tvTime"
-    tools:text="482ms" />
+    <TextView
+      android:id="@+id/tvTime"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:textColor="@color/gray"
+      android:textSize="12sp"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      tools:text="2023-08-31 11:44:01" />
 
-  <TextView
-    android:id="@+id/tvHost"
-    android:layout_width="0dp"
-    android:layout_height="wrap_content"
-    android:layout_marginHorizontal="10dp"
-    android:textColor="@color/blue_3D59AB"
-    android:textSize="12sp"
-    app:layout_constraintBottom_toBottomOf="@id/tvTime"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toEndOf="@id/tvDuration"
-    app:layout_constraintTop_toTopOf="@id/tvTime"
-    tools:text="https://kohcamp.qq.com" />
+    <TextView
+      android:id="@+id/tvDuration"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginHorizontal="10dp"
+      android:textColor="@color/magenta"
+      android:textSize="12sp"
+      app:layout_constraintBottom_toBottomOf="@id/tvTime"
+      app:layout_constraintStart_toEndOf="@id/tvTime"
+      app:layout_constraintTop_toTopOf="@id/tvTime"
+      tools:text="482ms" />
+
+    <TextView
+      android:id="@+id/tvSize"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:textColor="@color/purple_8A2BE2"
+      android:textSize="12sp"
+      app:layout_constraintBottom_toBottomOf="@id/tvTime"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toEndOf="@id/tvDuration"
+      app:layout_constraintTop_toTopOf="@id/tvTime"
+      tools:text="44 KB" />
+  </LinearLayout>
+
 
   <TextView
     android:id="@+id/tvUrl"
@@ -52,11 +61,11 @@
     android:textSize="12sp"
     android:textStyle="bold"
     app:layout_constraintTop_toBottomOf="@id/tvTime"
-    tools:text="/app/easyconf/batchgetjson" />
+    tools:text="https://kohcamp.qq.com/app/easyconf/batchgetjson" />
 
   <View
     android:layout_width="match_parent"
-    android:layout_height="1dp"
-    android:background="@color/gray_CCCCCC"
+    android:layout_height="0.5dp"
+    android:background="@color/red_FF7F50"
     app:layout_constraintTop_toBottomOf="@id/tvUrl" />
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

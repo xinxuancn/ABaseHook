@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
   xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
-  android:fitsSystemWindows="true">
+  android:fitsSystemWindows="true"
+  android:orientation="vertical">
 
   <LinearLayout
     android:id="@+id/llTitle"
     android:layout_width="match_parent"
     android:layout_height="40dp"
     android:background="@drawable/shape_s1_gray_trans"
-    android:orientation="horizontal"
-    app:layout_constraintTop_toTopOf="parent">
+    android:orientation="horizontal">
 
     <TextView
       android:id="@+id/tvPause"
@@ -71,13 +71,12 @@
     android:textColor="@color/black"
     android:textColorHint="@color/gray_CCCCCC"
     android:textSize="14sp"
-    app:layout_constraintTop_toBottomOf="@id/llTitle"
     tools:ignore="HardcodedText" />
 
   <androidx.recyclerview.widget.RecyclerView
     android:id="@+id/recycler"
     android:layout_width="match_parent"
-    android:layout_height="0dp"
+    android:layout_height="match_parent"
     android:clipToPadding="false"
     android:fadeScrollbars="false"
     android:overScrollMode="always"
@@ -88,8 +87,6 @@
     android:scrollbarTrackVertical="@drawable/scrollbar_vertical_track"
     android:scrollbars="vertical"
     app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintTop_toBottomOf="@id/etSearch"
     tools:itemCount="10"
     tools:listitem="@layout/item_info_parent" />
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

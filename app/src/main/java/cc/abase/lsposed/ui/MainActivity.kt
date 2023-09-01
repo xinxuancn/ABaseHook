@@ -28,7 +28,7 @@ class MainActivity : BaseBindingActivity<ActivityMainBinding>() {
     registerReceiver(myReceiver, IntentFilter().also { it.addAction(MyBroadcastReceiver.KEY_RECEIVER_ACTION) })
     refreshStatus(true)
     val list = mutableListOf<LogInfoBan>()
-    val adapter = LogInfoAdapter(list).also { it.onItemClick = { b -> DetailActivity.startActivity(mContext, b.hashCode()) } }
+    val adapter = LogInfoAdapter(list).also { it.onItemClick = { b -> DetailActivity.startActivity(mContext, b) } }
     binding.recycler.adapter = adapter
     AppLiveData.logNewLiveData.observe(this, MyObserver { d -> addData(adapter, d) })
     binding.tvStart.setOnClickListener { refreshStatus(true) }

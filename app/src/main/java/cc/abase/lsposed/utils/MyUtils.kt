@@ -161,4 +161,16 @@ object MyUtils {
       str
     }
   }
+
+  fun calculateStringSize(string: String): String {
+    val bytes = string.toByteArray(Charsets.UTF_8).size
+    val kilobytes = bytes / 1024
+    val megabytes = kilobytes / 1024
+
+    return when {
+      megabytes > 0 -> "$megabytes MB"
+      kilobytes > 0 -> "$kilobytes KB"
+      else -> "$bytes bytes"
+    }
+  }
 }

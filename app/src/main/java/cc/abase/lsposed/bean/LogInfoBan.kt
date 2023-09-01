@@ -8,13 +8,14 @@ package cc.abase.lsposed.bean
 data class LogInfoBan(
   val url: String = "",
   val method: String = "",
+  var dataSize: String = "",
 
   val requestSysTime: Long = 0,
   val requestHeader: String = "",
-  val requestParams: String = "",
+  var requestParams: String = "",
 
   val responseSysTime: Long = 0,
   val responseHeader: String = "",
-  val responseBody: String = "",
+  var responseBody: String = "",
   val responseError: Throwable? = null,
 )

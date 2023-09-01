@@ -3,7 +3,8 @@ package cc.abase.lsposed.hook
 import android.app.Application
 import android.content.Context
 import cc.abase.lsposed.bean.LogInfoBan
-import cc.abase.lsposed.livedata.AppLiveData
+import cc.abase.lsposed.config.AppConfig
+import cc.abase.lsposed.receiver.MyBroadcastReceiver
 import cc.abase.lsposed.utils.MyUtils
 import de.robv.android.xposed.*
 import de.robv.android.xposed.callbacks.XC_LoadPackage
@@ -36,8 +37,8 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
       override fun afterHookedMethod(param: MethodHookParam) {
         val context = param.thisObject as Context
         val pa = MyUtils.currentProcessPackage(context)
-        if (pa != AppLiveData.myPackageName && !pa.contains(":")) hookChain(context, pa)//防止有推送等进程，比如-->com.abase.s1:pushcore
-        else if (pa == AppLiveData.myPackageName) {
+        if (pa != AppConfig.myPackageName && !pa.contains(":")) hookChain(context, pa)//防止有推送等进程，比如-->com.abase.s1:pushcore
+        else if (pa == AppConfig.myPackageName) {
           //这里可以执行测试代码
         }
       }
@@ -204,7 +205,7 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
       requestParams = requestBody2String(bo)
       val bodyStr = MyUtils.unescapeJson(requestParams)
       sb.append("\n\n请求体:\n")
-        .append(if (requestParams.isBlank()) "有请求Body,可能被混淆了，无法读取" else MyUtils.jsonFormat(bodyStr))
+        .append(if (requestParams.isBlank()) "有请求Body,可能被混淆了，无法读取" else MyUtils.unescapeJson(MyUtils.jsonFormat(bodyStr)))
     }
     sb.append("\n<<<<<<<<Okhttp.Request.END<<<-------------------------------------")
     //打印
@@ -249,9 +250,9 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
           .append("\n\n响应头:\n").append(responseHeaders)
         val responseBody = XposedHelpers.getObjectField(response, "body")//Response.ResponseBody
         responseBody?.let { bo ->
-          val p = responseBody2String(responseHeaders, bo)
-          responseBodyStr = p.second
-          sb.append("\n\n响应体:\n").append(p.first)
+          responseBodyStr = responseBody2String(responseHeaders, bo)
+          val bodyJsonStr = MyUtils.jsonFormat(if (responseBodyStr.contains(MyUtils.gzipTag)) MyUtils.unGzip(responseBodyStr) else responseBodyStr)//GZIP解密+Json格式化显示
+          sb.append("\n\n响应体:\n").append(bodyJsonStr)//美化后的响应体
         }
         sb.append("\n<<<<<<<<Okhttp.Response.END<<<-------------------------------------")
         //打印
@@ -270,12 +271,12 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
       responseBody = responseBodyStr,
       responseError = param.throwable,
     )
-    AppLiveData.sendBroadcastWithData(context, MyUtils.toJson(info))
+    MyBroadcastReceiver.sendBroadcastWithData(context, info)
   }
   //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="Request.body的String【未格式化】">
-  private fun requestBody2String(requestBody: Any): String {
+  private fun requestBody2String(requestBody: Any): String {//返回原始的请求体
     val classBuffer = XposedHelpers.findClassIfExists("okio.Buffer", lpparam.classLoader)//判断是否存在okio.Buffer，如果被混淆则无法获取到，则需要修改新路径
     return if (classBuffer != null) {
       val obBuffer = classBuffer.newInstance()//先把数据写入Buffer，再从先把数据写入Buffer读取
@@ -288,11 +289,9 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
   //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="Response.body的String【已格式化】">
-  private fun responseBody2String(responseHeaders: String, responseBody: Any): Pair<String, String> {
+  private fun responseBody2String(responseHeaders: String, responseBody: Any): String {//返回原始的响应体,或者失败的描述
     val mediaType = XposedHelpers.callMethod(responseBody, "contentType")//ResponseBody.contentType()
     return if (mediaType != null) {
-      var formatStr = ""
-      var originStr = ""
       val subtype = XposedHelpers.getObjectField(mediaType, "subtype")//MediaType.subtype
       if (MyUtils.isCanParsable(subtype?.toString())) {//通过响应类型判断，可以解析的才解析
         //响应头处理
@@ -324,17 +323,12 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         val charset = XposedHelpers.callMethod(mediaType, "charset", Charsets.UTF_8) ?: Charsets.UTF_8//contentType.charset(UTF_8)
         val cloneBuffer = XposedHelpers.callMethod(buffer, "clone") //Buffer.clone()
         val result = XposedHelpers.callMethod(cloneBuffer, "readString", charset)?.toString() ?: "" //Buffer.readString(Charsets.UTF_8)
-        if (result.isNotBlank()) {
-          val bodyStr = MyUtils.jsonFormat(if (result.contains(MyUtils.gzipTag)) MyUtils.unGzip(result) else result)
-          Pair(MyUtils.unescapeJson(bodyStr), result)
-        } else {
-          Pair("有响应Body,可能被混淆了，无法读取", "")
-        }
+        result.ifBlank { "有响应Body,可能被混淆了，无法读取" }
       } else {
-        Pair("不解析该类型的响应体:${mediaType}", "")
+        "不解析该类型的响应体:${mediaType}"
       }
     } else {
-      Pair("没有contentType，不解析响应体", "")
+      "没有contentType，不解析响应体"
     }
   }
   //</editor-fold>

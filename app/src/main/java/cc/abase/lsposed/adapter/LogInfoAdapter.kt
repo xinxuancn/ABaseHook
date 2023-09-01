@@ -1,7 +1,6 @@
 package cc.abase.lsposed.adapter
 
 import android.annotation.SuppressLint
-import android.net.Uri
 import cc.abase.lsposed.base.BaseBindAdapter
 import cc.abase.lsposed.base.BaseViewHolder
 import cc.abase.lsposed.bean.LogInfoBan
@@ -23,12 +22,7 @@ class LogInfoAdapter(list: MutableList<LogInfoBan>) : BaseBindAdapter<LogInfoBan
     val t3 = item.responseSysTime - t1
     holder.vb.tvTime.text = sdf.format(t1)
     holder.vb.tvDuration.text = "${t3}ms"
-    val url = item.url
-    val uri = Uri.parse(url)
-    val s1 = uri.scheme
-    val s2 = uri.host
-    val s12 = "${s1}://${s2}"
-    holder.vb.tvHost.text = s12
-    holder.vb.tvUrl.text = url.replaceFirst(s12, "")
+    holder.vb.tvSize.text = item.dataSize
+    holder.vb.tvUrl.text = item.url
   }
 }
