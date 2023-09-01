@@ -6,6 +6,7 @@ import cc.abase.lsposed.config.AppConfig
 import cc.abase.lsposed.ext.launchError
 import cc.abase.lsposed.livedata.AppLiveData
 import cc.abase.lsposed.utils.MyUtils
+import de.robv.android.xposed.XposedBridge
 import kotlinx.coroutines.Dispatchers
 
 /**
@@ -24,13 +25,14 @@ class MyBroadcastReceiver : BroadcastReceiver() {
     //不同进程同步消息
     fun sendBroadcastWithData(context: Context, bean: LogInfoBan) {
       launchError(Dispatchers.IO) {
-        val json = MyUtils.toJson(bean)
-        val size = MyUtils.calculateStringSize(json)
-        bean.dataSize = "压缩后:$size"
-        if (json.toByteArray(Charsets.UTF_8).size / 1024 > 200) {//测试发现发送300K+会闪退，所以暂定200KB
-          bean.responseBody = "响应数据太大无法正常传送，请查看打印日志，压缩后数据大小:${size}"
+        val jsonGzip = MyUtils.gzip(MyUtils.toJson(bean))
+        val sizeGzip = MyUtils.calculateStringSize(jsonGzip)
+        bean.dataSize = "压缩后:$sizeGzip"
+        if (jsonGzip.toByteArray(Charsets.UTF_8).size / 1024 > 200) {//测试发现发送300K+会闪退，所以暂定200KB
+          bean.responseBody = "响应数据太大无法正常传送，请查看打印日志，压缩后数据大小:${sizeGzip}"
         }
         val enData = encodeBroadcastData(MyUtils.toJson(bean))
+        XposedBridge.log("压缩后数据大小:${MyUtils.calculateStringSize(enData)}")
         context.sendBroadcast(Intent(KEY_RECEIVER_ACTION).also { it.putExtra(KEY_RECEIVER_DATA, enData) })
       }
     }
