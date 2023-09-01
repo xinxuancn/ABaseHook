@@ -2,7 +2,7 @@ plugins {
   id 'com.android.application'
   id 'org.jetbrains.kotlin.android'
 }
-
+def myAppName = "OkLog"
 android {
   namespace 'cc.abase.lsposed'
   compileSdk Versions.sdkTarget
@@ -13,6 +13,7 @@ android {
     targetSdk Versions.sdkTarget
     versionCode 1
     versionName "1.0.0"
+    resValue "string", "app_name", myAppName
   }
 
   buildFeatures { viewBinding true }
@@ -102,7 +103,7 @@ android.applicationVariants.all { variant ->
     //版本号
     String versionName = getVersionName()
     //应用名称
-    String appName = "测试Hook"
+    String appName = myAppName
     //打包APK完成后的重命名和拷贝
     assemble.doLast {
       //编译完成的时间
