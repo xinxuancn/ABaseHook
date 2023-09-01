@@ -25,11 +25,11 @@ class MyBroadcastReceiver : BroadcastReceiver() {
     //不同进程同步消息
     fun sendBroadcastWithData(context: Context, bean: LogInfoBan) {
       launchError(Dispatchers.IO) {
-        val jsonGzip = MyUtils.gzip(MyUtils.toJson(bean))
-        val sizeGzip = MyUtils.calculateStringSize(jsonGzip)
-        bean.dataSize = "压缩后:$sizeGzip"
-        if (jsonGzip.toByteArray(Charsets.UTF_8).size / 1024 > 200) {//测试发现发送300K+会闪退，所以暂定200KB
-          bean.responseBody = "响应数据太大无法正常传送，请查看打印日志，压缩后数据大小:${sizeGzip}"
+        val encJson = encodeBroadcastData(MyUtils.toJson(bean))
+        val encSize= MyUtils.calculateStringSize(encJson)
+        bean.dataSize = "压缩后:$encSize"
+        if (encJson.toByteArray(Charsets.UTF_8).size / 1024 > 250) {//测试发现发送279+会闪退，所以暂定250KB
+          bean.responseBody = "响应数据太大无法正常传送，请查看打印日志，压缩后数据大小:${encJson}"
         }
         val enData = encodeBroadcastData(MyUtils.toJson(bean))
         XposedBridge.log("压缩后数据大小:${MyUtils.calculateStringSize(enData)}")
