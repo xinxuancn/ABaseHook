@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import cc.abase.lsposed.adapter.LineAdapter
 import cc.abase.lsposed.base.BaseBindingActivity
 import cc.abase.lsposed.bean.LogInfoBan
 import cc.abase.lsposed.databinding.ActivityDetailBinding
@@ -56,11 +57,11 @@ class DetailActivity : BaseBindingActivity<ActivityDetailBinding>() {
       vb.tvResponseHeader.text = logBean.responseHeader
       vb.tvResponseError.text = logBean.responseError?.toString() ?: ""
       vb.tvResponseHeader.visibility = if (logBean.responseHeader.isBlank()) View.GONE else View.VISIBLE
-      vb.tvResponseBody.visibility = if (logBean.responseBody.isBlank()) View.GONE else View.VISIBLE
+      vb.recyclerResponse.visibility = if (logBean.responseBody.isBlank()) View.GONE else View.VISIBLE
       vb.tvResponseError.visibility = if ((logBean.responseError?.toString() ?: "").isBlank()) View.GONE else View.VISIBLE
-      vb.tvResponseBody.post {
-        vb.tvResponseBody.text = logBean.responseBody
-      }
+      val datas = logBean.responseBody.split("\n").toMutableList()
+      val adapter = LineAdapter(datas)
+      vb.recyclerResponse.adapter = adapter
     }
   }
   //</editor-fold>

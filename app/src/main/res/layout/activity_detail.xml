@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
   xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
@@ -144,24 +145,6 @@
       \naccess-control-allow-methods: GET, POST, OPTIONS" />
 
     <TextView
-      android:id="@+id/tvResponseBody"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginStart="32dp"
-      android:layout_marginEnd="10dp"
-      android:paddingVertical="2dp"
-      android:textColor="@color/blue_3D59AB"
-      android:textIsSelectable="true"
-      android:textSize="12sp"
-      tools:text="{\n    ''return_code'': 0,\n    ''result'': 0,\n    ''return_msg'': '''''''',
-      \n    ''data'': {
-      \n        ''video_userid'': ''687198163'',
-      \n        ''video_sessionkey'': ''OKqrwlMpDfMo_3Tz7wRl0Q.N'',
-      \n        ''expire_time'': 6600
-      \n    }
-      \n}" />
-
-    <TextView
       android:id="@+id/tvResponseError"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
@@ -171,5 +154,25 @@
       android:textColor="@color/red"
       android:textSize="12sp"
       tools:text="接口请求异常" />
+
+    <androidx.recyclerview.widget.RecyclerView
+      android:id="@+id/recyclerResponse"
+      android:layout_width="match_parent"
+      android:layout_height="720dp"
+      android:layout_marginStart="32dp"
+      android:layout_marginEnd="10dp"
+      android:clipToPadding="false"
+      android:fadeScrollbars="false"
+      android:overScrollMode="always"
+      android:paddingBottom="15dp"
+      android:scrollbarFadeDuration="0"
+      android:scrollbarStyle="insideOverlay"
+      android:scrollbarThumbVertical="@drawable/scrollbar_vertical_thumb"
+      android:scrollbarTrackVertical="@drawable/scrollbar_vertical_track"
+      android:scrollbars="vertical"
+      app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+      tools:itemCount="3"
+      tools:listitem="@layout/item_response_line" />
+
   </LinearLayout>
 </androidx.core.widget.NestedScrollView>
