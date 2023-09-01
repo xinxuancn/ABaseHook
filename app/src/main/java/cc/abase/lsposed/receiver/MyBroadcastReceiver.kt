@@ -32,8 +32,8 @@ class MyBroadcastReceiver : BroadcastReceiver() {
           bean.responseBody = "响应数据太大无法正常传送，请查看打印日志，压缩后数据大小:${encSize1}"
         }
         val encJson2 = encodeBroadcastData(MyUtils.toJson(bean))
-        val encSize2 = MyUtils.calculateStringSize(encJson2)
-        XposedBridge.log("压缩后数据大小:$encSize2")
+        //val encSize2 = MyUtils.calculateStringSize(encJson2)
+        //XposedBridge.log("压缩后数据大小:$encSize2")
         if (((encJson2.toByteArray(Charsets.UTF_8).size) / 1024) > 250) {
           XposedBridge.log("压缩后数据大于250K，所以不发送广播")
         } else {
