@@ -4,10 +4,12 @@ import android.app.Application
 import android.content.Context
 import cc.abase.lsposed.bean.LogInfoBan
 import cc.abase.lsposed.config.AppConfig
+import cc.abase.lsposed.ext.launchError
 import cc.abase.lsposed.receiver.MyBroadcastReceiver
 import cc.abase.lsposed.utils.MyUtils
 import de.robv.android.xposed.*
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+import kotlinx.coroutines.Dispatchers
 
 /**
  * 这里用到了不同进程同步消息，使用的是广播模式，否则2个APP没办法进行数据同步
@@ -62,7 +64,7 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
     val clsOkVersionNew = XposedHelpers.findClassIfExists("okhttp3.OkHttp", lpparam.classLoader)
     var versionOkhttp = ""
     if (clsOkVersionOld != null) {
-      versionOkhttp = XposedHelpers.callMethod(clsOkVersionOld, "userAgent")?.toString()?.replace("okhttp/", "")?.trim() ?: ""
+      versionOkhttp = XposedHelpers.callMethod(clsOkVersionOld, "userAgent")?.toString()?.replace("okhttp/", "")?.trim() ?: ""//读取版本号
     } else if (clsOkVersionNew != null) {
       versionOkhttp = XposedHelpers.getStaticObjectField(clsOkVersionNew, "VERSION")?.toString()?.trim() ?: ""
     }
@@ -89,9 +91,9 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
         val requestHeaders = XposedHelpers.getObjectField(request, "headers")//读取对象 Request.headers
         val oldBuilder1 = XposedHelpers.callMethod(requestHeaders, "newBuilder") //Headers.Builder
         val interceptorNames = interceptors.joinToString(separator = ",") { a -> a.javaClass.name.toString() }
-        val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagInterceptors, interceptorNames)
-        val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")
-        XposedHelpers.setObjectField(request, "headers", newRequestHeaders)
+        val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagInterceptors, interceptorNames)//Builder设置所有拦截器名称
+        val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")//Builder.build()
+        XposedHelpers.setObjectField(request, "headers", newRequestHeaders)//Header设置所有拦截器名称
         hookInterceptor(interceptors.map { a -> a.javaClass }.toMutableList(), clsChain)
       }
     })
@@ -102,63 +104,82 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
     XposedHelpers.findAndHookMethod(clsRealChain, "proceed", clsRequest, object : XC_MethodHook() {
       override fun beforeHookedMethod(param: MethodHookParam) {
         super.beforeHookedMethod(param)
-        val request = param.args.first()//okhttp3.Request
-        val requestHeaders = XposedHelpers.getObjectField(request, "headers")//读取对象 Request.headers
-        var url = XposedHelpers.getObjectField(request, "url")?.toString() ?: ""//读取对象 Request.url
-        url = MyUtils.formatUrl(url)
-        val hasPrint = XposedHelpers.callMethod(requestHeaders, "get", headerTagPrint)?.toString() ?: ""//Headers.get(String)
-        val tagInterceptor = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptor)?.toString() ?: ""//Headers.get(String)
-        val tagInterceptors = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptors)?.toString() ?: ""//Headers.get(String)
-        val tagUpgrade = XposedHelpers.callMethod(requestHeaders, "get", "Upgrade")?.toString() ?: ""//Headers.get(String)
-        var needPrint = false
-        if (hasPrint != "true" && tagUpgrade.lowercase() != "websocket" && !MyUtils.isMediaType(url)) {//需要打印
-          needPrint = if (tagInterceptors.isBlank()) true else tagInterceptor == tagInterceptors.split(",").last()//直接在最后一个拦截器打印
-        }
-        if (needPrint) {
-          printRequestInfo(param)
-          //已经打印需要把当前请求设置为已打印，否则会再次发起同样的请求
-          val oldBuilder1 = XposedHelpers.callMethod(requestHeaders, "newBuilder") //Headers.Builder
-          val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagPrint, "true")
-          val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")
-          XposedHelpers.setObjectField(request, "headers", newRequestHeaders)
-        }
+        hookChainRequest(param)
       }
 
       override fun afterHookedMethod(param: MethodHookParam) {
         super.afterHookedMethod(param)
-        val request = param.args.first()//okhttp3.Request
-        val response = param.result//okhttp3.Request
-        var url = XposedHelpers.getObjectField(request, "url")?.toString() ?: ""//读取对象 Request.url
-        url = MyUtils.formatUrl(url)
-        var needPrint = true
-        var responseHeaders: Any? = null
-        if (response != null) {
-          needPrint = false
-          val header = XposedHelpers.getObjectField(response, "headers")//读取对象 Request.headers
-          responseHeaders = header
-          val hasPrint = XposedHelpers.callMethod(header, "get", headerTagPrint)?.toString() ?: ""//Headers.get(String)
-          val requestHeaders = XposedHelpers.getObjectField(request, "headers")//读取对象 Request.headers
-          val tagInterceptor = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptor)?.toString() ?: ""//Headers.get(String)
-          val tagInterceptors = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptors)?.toString() ?: ""//Headers.get(String)
-          val tagUpgrade = XposedHelpers.callMethod(requestHeaders, "get", "Upgrade")?.toString() ?: ""//Headers.get(String)
-          if (hasPrint != "true" && tagUpgrade.lowercase() != "websocket" && !MyUtils.isMediaType(url)) {
-            needPrint = if (tagInterceptors.isBlank()) true else tagInterceptor == tagInterceptors.split(",").last()//直接在最后一个拦截器打印
-          }
+        var responseBodyStr = ""
+        param.result?.let { response ->
+          val responseHeader = XposedHelpers.getObjectField(response, "headers")//读取对象 Response.headers
+          val responseBody = XposedHelpers.getObjectField(response, "body")//Response.ResponseBody
+          responseBodyStr = responseBody2String(responseHeader?.toString() ?: "", responseBody)
         }
-        if (needPrint) {
-          printResponseInfo(context, param)
-          if (responseHeaders != null) {
-            //已经打印需要把当前请求设置为已打印，否则会再次发起同样的请求
-            val oldBuilder1 = XposedHelpers.callMethod(responseHeaders, "newBuilder") //Headers.Builder
-            val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagPrint, "true")
-            val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")
-            XposedHelpers.setObjectField(response, "headers", newRequestHeaders)
-          }
-        }
+        hookChainResponse(context, param, responseBodyStr)
       }
     })
     //</editor-fold>
   }
+  //</editor-fold>
+
+  //<editor-fold defaultstate="collapsed" desc="拦截请求">
+  private fun hookChainRequest(param: XC_MethodHook.MethodHookParam) {
+    val request = param.args.first()//okhttp3.Request
+    val requestHeaders = XposedHelpers.getObjectField(request, "headers")//读取对象 Request.headers
+    var url = XposedHelpers.getObjectField(request, "url")?.toString() ?: ""//读取对象 Request.url
+    url = MyUtils.formatUrl(url)
+    val hasPrint = XposedHelpers.callMethod(requestHeaders, "get", headerTagPrint)?.toString() ?: ""//Headers.get(String)
+    val tagInterceptor = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptor)?.toString() ?: ""//Headers.get(String)
+    val tagInterceptors = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptors)?.toString() ?: ""//Headers.get(String)
+    val tagUpgrade = XposedHelpers.callMethod(requestHeaders, "get", "Upgrade")?.toString() ?: ""//Headers.get(String)
+    var needPrint = false
+    if (hasPrint != "true" && tagUpgrade.lowercase() != "websocket" && !MyUtils.isMediaType(url)) {//需要打印
+      needPrint = if (tagInterceptors.isBlank()) true else tagInterceptor == tagInterceptors.split(",").last()//直接在最后一个拦截器打印
+    }
+    if (needPrint) {
+      //已经打印需要把当前请求设置为已打印，否则会再次发起同样的请求
+      val oldBuilder1 = XposedHelpers.callMethod(requestHeaders, "newBuilder") //Headers.Builder
+      val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagPrint, "true")//Builder设置已打印
+      val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")//Builder.build()
+      XposedHelpers.setObjectField(request, "headers", newRequestHeaders)//Header设置已经打印过了
+      printRequestInfo(param)
+    }
+  }
+  //</editor-fold>
+
+  //<editor-fold defaultstate="collapsed" desc="拦截响应">
+  private fun hookChainResponse(context: Context, param: XC_MethodHook.MethodHookParam, responseBodyStr: String) {
+    val request = param.args.first()//okhttp3.Request
+    val response = param.result//okhttp3.Response
+    var url = XposedHelpers.getObjectField(request, "url")?.toString() ?: ""//读取对象 Request.url
+    url = MyUtils.formatUrl(url)
+    var needPrint = true
+    var responseHeaders: Any? = null
+    if (response != null) {
+      needPrint = false
+      val header = XposedHelpers.getObjectField(response, "headers")//读取对象 Response.headers
+      responseHeaders = header
+      val hasPrint = XposedHelpers.callMethod(header, "get", headerTagPrint)?.toString() ?: ""//Headers.get(String)
+      val requestHeaders = XposedHelpers.getObjectField(request, "headers")//读取对象 Request.headers
+      val tagInterceptor = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptor)?.toString() ?: ""//Headers.get(String)
+      val tagInterceptors = XposedHelpers.callMethod(requestHeaders, "get", headerTagInterceptors)?.toString() ?: ""//Headers.get(String)
+      val tagUpgrade = XposedHelpers.callMethod(requestHeaders, "get", "Upgrade")?.toString() ?: ""//Headers.get(String)
+      if (hasPrint != "true" && tagUpgrade.lowercase() != "websocket" && !MyUtils.isMediaType(url)) {
+        needPrint = if (tagInterceptors.isBlank()) true else tagInterceptor == tagInterceptors.split(",").last()//直接在最后一个拦截器打印
+      }
+    }
+    if (needPrint) {
+      if (responseHeaders != null) {
+        //已经打印需要把当前请求设置为已打印，否则会再次发起同样的请求
+        val oldBuilder1 = XposedHelpers.callMethod(responseHeaders, "newBuilder") //Headers.Builder
+        val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagPrint, "true")//Builder设置已打印
+        val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")//Builder.build()
+        XposedHelpers.setObjectField(response, "headers", newRequestHeaders)//Header设置已经打印过了
+      }
+      launchError(Dispatchers.IO) { printResponseInfo(context, param, responseBodyStr) }
+    }
+  }
+
   //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="监听拦截器Interceptor.intercept(Chain),将当前是什么拦截器设置到Header">
@@ -175,9 +196,9 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
             val request = XposedHelpers.callMethod(chain, "request")//Chain.request()
             val requestHeaders = XposedHelpers.getObjectField(request, "headers")//读取对象 Request.headers
             val oldBuilder1 = XposedHelpers.callMethod(requestHeaders, "newBuilder") //Headers.Builder
-            val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagInterceptor, interceptor.javaClass.name.toString())
-            val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")
-            XposedHelpers.setObjectField(request, "headers", newRequestHeaders)
+            val oldBuilder2 = XposedHelpers.callMethod(oldBuilder1, "set", headerTagInterceptor, interceptor.javaClass.name.toString())//Builder设置当前打印时使用的拦截名称
+            val newRequestHeaders = XposedHelpers.callMethod(oldBuilder2, "build")//Builder.build()
+            XposedHelpers.setObjectField(request, "headers", newRequestHeaders)//Header设置当前使用的拦截器名称
           }
         })
       }
@@ -223,23 +244,21 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
     val newMaps: MutableMap<Class<*>, Any> = mutableMapOf()
     tags.entries.forEach { m -> newMaps[m.key] = m.value }
     newMaps[java.lang.Long::class.java] = java.lang.Long.valueOf(System.currentTimeMillis())
-    XposedHelpers.setObjectField(request, "tags", newMaps)
+    XposedHelpers.setObjectField(request, "tags", newMaps)//Header设置请求开始时间
   }
   //</editor-fold>
 
   //<editor-fold defaultstate="collapsed" desc="打印响应信息">
-  private fun printResponseInfo(context: Context, param: XC_MethodHook.MethodHookParam) {
+  private fun printResponseInfo(context: Context, param: XC_MethodHook.MethodHookParam, responseBodyStr: String) {
     val request = param.args.first()//okhttp3.Request
     var url = XposedHelpers.getObjectField(request, "url")?.toString() ?: ""//读取对象 Request.url
     url = MyUtils.formatUrl(url)
     val method = XposedHelpers.getObjectField(request, "method")?.toString() ?: ""//读取对象 Request.method
-    val startTime = XposedHelpers.callMethod(request, "tag", java.lang.Long::class.java)?.toString()?.toLong() ?: 0L
-    val currentTime = System.currentTimeMillis()
-    val tookMs = currentTime - startTime
+    var startTime = XposedHelpers.callMethod(request, "tag", java.lang.Long::class.java)?.toString()?.toLong() ?: 0L//读取请求开始时间
+    var currentTime = System.currentTimeMillis()
     val result = param.result
-    var responseBodyStr = ""
     if (param.throwable != null) {//响应失败
-      XposedBridge.log("$TAG 简单打印 请求失败：$method ${tookMs}ms $url ${param.throwable.message}")//单独打印接口请求信息
+      XposedBridge.log("$TAG 简单打印 请求失败：$method ${currentTime - startTime}ms $url ${param.throwable.message}")//单独打印接口请求信息
     } else {//响应成功
       val isMedia = MyUtils.isMediaType(url)
       if (isMedia) {//媒体类不打印
@@ -248,19 +267,21 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
       }
       //出参okhttp3.Response
       result?.let { response ->//OKHttp从3.3.0起添加了sentRequestAtMillis和receivedResponseAtMillis
+        val t1 = XposedHelpers.getObjectField(response, "sentRequestAtMillis")?.toString()?.toLong() ?: 0
+        val t2 = XposedHelpers.getObjectField(response, "receivedResponseAtMillis")?.toString()?.toLong() ?: 0
+        if (t1 in 1 until t2) {
+          startTime = t1
+          currentTime = t2
+        }
         //请求结果
         val responseHeaders = XposedHelpers.getObjectField(response, "headers").toString().trim()//读取对象 Response.headers
         val sb = StringBuilder()
         sb.append(">>>>>>>>Okhttp.Response.START>>>----------------------------------->")
         //XposedBridge.log("$TAG 简单打印 接口响应: $method ${tookMs}ms $url")//单独打印接口响应时长
-        sb.append("\n响应接口:  ").append(method).append("  ").append(tookMs).append("ms").append("  ").append(url)
+        sb.append("\n响应接口:  ").append(method).append("  ").append(currentTime - startTime).append("ms").append("  ").append(url)
           .append("\n\n响应头:\n").append(responseHeaders)
-        val responseBody = XposedHelpers.getObjectField(response, "body")//Response.ResponseBody
-        responseBody?.let { bo ->
-          responseBodyStr = responseBody2String(responseHeaders, bo)
-          val bodyJsonStr = MyUtils.jsonFormat(if (responseBodyStr.contains(MyUtils.gzipTag)) MyUtils.unGzip(responseBodyStr) else responseBodyStr)//GZIP解密+Json格式化显示
-          sb.append("\n\n响应体:\n").append(bodyJsonStr)//美化后的响应体
-        }
+        val bodyJsonStr = MyUtils.jsonFormat(if (responseBodyStr.contains(MyUtils.gzipTag)) MyUtils.unGzip(responseBodyStr) else responseBodyStr)//GZIP解密+Json格式化显示
+        sb.append("\n\n响应体:\n").append(bodyJsonStr)//美化后的响应体
         sb.append("\n<<<<<<<<Okhttp.Response.END<<<-------------------------------------")
         //打印
         XposedBridge.log(sb.toString())
