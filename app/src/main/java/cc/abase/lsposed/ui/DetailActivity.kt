@@ -1,10 +1,11 @@
 package cc.abase.lsposed.ui
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.Intent
+import android.content.*
 import android.os.Bundle
+import android.os.TransactionTooLargeException
 import android.view.View
+import android.widget.Toast
 import cc.abase.lsposed.adapter.LineAdapter
 import cc.abase.lsposed.base.BaseBindingActivity
 import cc.abase.lsposed.bean.LogInfoBan
@@ -13,6 +14,7 @@ import cc.abase.lsposed.livedata.AppLiveData
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.Locale
+
 
 /**
  * Author:Khaos
@@ -57,11 +59,26 @@ class DetailActivity : BaseBindingActivity<ActivityDetailBinding>() {
       vb.tvResponseHeader.text = logBean.responseHeader
       vb.tvResponseError.text = logBean.responseError?.toString() ?: ""
       vb.tvResponseHeader.visibility = if (logBean.responseHeader.isBlank()) View.GONE else View.VISIBLE
+      vb.btnCopy.visibility = if (logBean.responseBody.isBlank()) View.GONE else View.VISIBLE
       vb.recyclerResponse.visibility = if (logBean.responseBody.isBlank()) View.GONE else View.VISIBLE
       vb.tvResponseError.visibility = if ((logBean.responseError?.toString() ?: "").isBlank()) View.GONE else View.VISIBLE
       val datas = logBean.responseBody.split("\n").toMutableList()
       val adapter = LineAdapter(datas)
       vb.recyclerResponse.adapter = adapter
+      val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+      vb.btnCopy.setOnClickListener {
+        try {
+          clipboardManager.setPrimaryClip(ClipData.newPlainText("Label", logBean.responseBody))
+          Toast.makeText(mContext, "复制成功", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {//android.os.TransactionTooLargeException: data parcel size 2726444 bytes
+          e.printStackTrace()
+          if (e is TransactionTooLargeException) {
+            Toast.makeText(mContext, "内容太多,复制失败", Toast.LENGTH_SHORT).show()
+          } else {
+            Toast.makeText(mContext, "复制失败", Toast.LENGTH_SHORT).show()
+          }
+        }
+      }
     }
   }
   //</editor-fold>
