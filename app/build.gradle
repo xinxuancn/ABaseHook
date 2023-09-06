@@ -108,7 +108,7 @@ android.applicationVariants.all { variant ->
     assemble.doLast {
       //编译完成的时间
       String buildEndTime = "${new Date().format("yyyyMMdd_HHmm")}"
-      String apkFileName = "${appName}__${typeName}_${versionName}_${buildEndTime}.apk"
+      String apkFileName = "${appName}_${typeName}_${versionName}_${buildEndTime}.apk"
       println "assemble编译结束=$apkFileName"
       //把正式版拷贝到项目APK目录
       if (typeName == "Release") {
