@@ -64,7 +64,12 @@ class HookChainByInterceptor(private val lpparam: XC_LoadPackage.LoadPackagePara
     val clsOkVersionNew = XposedHelpers.findClassIfExists("okhttp3.OkHttp", lpparam.classLoader)
     var versionOkhttp = ""
     if (clsOkVersionOld != null) {
-      versionOkhttp = XposedHelpers.callMethod(clsOkVersionOld, "userAgent")?.toString()?.replace("okhttp/", "")?.trim() ?: ""//读取版本号
+      versionOkhttp = try {
+        XposedHelpers.getStaticObjectField(clsOkVersionOld, "userAgent")?.toString()?.replace("okhttp/", "")?.trim() ?: ""//读取版本号
+      } catch (e: Exception) {
+        XposedBridge.log(e)
+        XposedHelpers.callMethod(clsOkVersionOld, "userAgent")?.toString()?.replace("okhttp/", "")?.trim() ?: ""//读取版本号
+      }
     } else if (clsOkVersionNew != null) {
       versionOkhttp = XposedHelpers.getStaticObjectField(clsOkVersionNew, "VERSION")?.toString()?.trim() ?: ""
     }
